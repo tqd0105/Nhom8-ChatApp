@@ -9,9 +9,39 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
+const io = socketIo(server, {
+    cors: {
+        origin: [
+            "http://localhost:3000",
+            "http://127.0.0.1:5500"
+        ],
+        methods: ["GET", "POST"]
+    }
+});
+
+require('./socket')(io);
+
+// Xử lý sự kiện kết nối từ client
+io.on("connection", (socket) => {
+    console.log("User connected:", socket.id);
+
+    // Nhận tin nhắn và broadcast cho các client khác
+    socket.on("send_message", (data) => {
+        io.emit("receive_message", data);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("User disconnected:", socket.id);
+    });
+});
+
 // Middleware
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || "localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:5500"
+    ],
+    credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
