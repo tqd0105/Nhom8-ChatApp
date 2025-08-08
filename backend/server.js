@@ -9,6 +9,18 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
+// Cấu hình CORS
+app.use(cors({
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:5500"
+    ],
+    credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Khởi tạo socket.io
 const io = socketIo(server, {
     cors: {
         origin: [
@@ -18,8 +30,6 @@ const io = socketIo(server, {
         methods: ["GET", "POST"]
     }
 });
-
-require('./socket')(io);
 
 // Xử lý sự kiện kết nối từ client
 io.on("connection", (socket) => {
@@ -34,17 +44,6 @@ io.on("connection", (socket) => {
         console.log("User disconnected:", socket.id);
     });
 });
-
-// Middleware
-app.use(cors({
-    origin: [
-      "http://localhost:3000",
-      "http://127.0.0.1:5500"
-    ],
-    credentials: true
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Serve static files từ frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
