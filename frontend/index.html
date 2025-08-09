@@ -1,12 +1,135 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GROUP 8 - CHAT APP</title>
-</head>
-<body>
-    
-    <script src="./js/index.js"></script>
-</body>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/frontend/styles.css" />
+    <title>Chat Nhanh</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/phosphor-icons"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <span style="display: flex; align-items: center; gap: 8px">
+          <svg width="28" height="28" fill="#5b6be1" viewBox="0 0 24 24">
+            <path
+              d="M12 2C6.477 2 2 6.037 2 11c0 2.386 1.053 4.553 2.805 6.207-.13.627-.527 2.52-1.13 4.08a.5.5 0 0 0 .65.65c1.56-.603 3.453-1 4.08-1.13C7.447 20.947 9.614 22 12 22c5.523 0 10-4.037 10-9s-4.477-9-10-9Z"
+            />
+          </svg>
+          Chat Nhanh
+        </span>
+        <div style="display: flex; align-items: center; gap: 18px">
+          <span
+            class="ph-magnifying-glass"
+            style="font-size: 20px; color: #5b6be1"
+          ></span>
+          <span
+            class="ph-user-circle"
+            style="font-size: 20px; color: #5b6be1"
+          ></span>
+          <span class="ph-bell" style="font-size: 20px; color: #5b6be1"></span>
+          <span
+            class="ph-sign-out"
+            style="font-size: 20px; color: #5b6be1"
+          ></span>
+        </div>
+      </div>
+      <div class="main-content">
+        <div class="sidebar">
+          <div class="sidebar-header">
+            <svg width="22" height="22" fill="#5b6be1" viewBox="0 0 24 24">
+              <path
+                d="M12 2C6.477 2 2 6.037 2 11c0 2.386 1.053 4.553 2.805 6.207-.13.627-.527 2.52-1.13 4.08a.5.5 0 0 0 .65.65c1.56-.603 3.453-1 4.08-1.13C7.447 20.947 9.614 22 12 22c5.523 0 10-4.037 10-9s-4.477-9-10-9Z"
+              />
+            </svg>
+            Chat Nhanh
+          </div>
+          <div class="sidebar-greeting">Xin chào, huy!</div>
+          <div class="sidebar-tabs">
+            <button class="sidebar-tab active">Bạn bè</button>
+            <button class="sidebar-tab">Online</button>
+            <button class="sidebar-tab">Phòng</button>
+          </div>
+          <div class="search-box">
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Tìm bạn bằng email..."
+            />
+            <button class="search-btn"><span class="ph-plus"></span></button>
+          </div>
+          <div class="friend-section">
+            <ul class="friend-list">
+              <li class="friend-item">
+                <div class="friend-avatar">h</div>
+                <div class="friend-info">
+                  <div class="friend-name">hunter</div>
+                  <div class="friend-status friend-offline">41 phút trước</div>
+                </div>
+                <span class="ph-chat-centered"></span>
+              </li>
+              <li class="friend-item selected">
+                <div class="friend-avatar">a</div>
+                <div class="friend-info">
+                  <div class="friend-name">a</div>
+                  <div class="friend-status">Đang hoạt động</div>
+                </div>
+                <span class="ph-chat-centered"></span>
+              </li>
+              <li class="friend-item selected">
+                <div class="friend-avatar">a</div>
+                <div class="friend-info">
+                  <div class="friend-name">a</div>
+                  <div class="friend-status">Đang hoạt động</div>
+                </div>
+                <span class="ph-chat-centered"></span>
+              </li>
+            </ul>
+          </div>
+          <div class="invite-section">
+            <div class="invite-title">Lời mời kết bạn (0)</div>
+            <div class="invite-empty">Không có lời mời nào</div>
+          </div>
+        </div>
+        <div class="chat-area">
+          <div class="chat-header">
+            <span
+              class="ph-users"
+              style="font-size: 20px; color: #5b6be1"
+            ></span>
+            Phòng chat chung
+            <span class="chat-status">Đã kết nối</span>
+          </div>
+          <div class="chat-box">
+            <svg width="64" height="64" fill="#5b6be1" viewBox="0 0 24 24">
+              <path
+                d="M12 2C6.477 2 2 6.037 2 11c0 2.386 1.053 4.553 2.805 6.207-.13.627-.527 2.52-1.13 4.08a.5.5 0 0 0 .65.65c1.56-.603 3.453-1 4.08-1.13C7.447 20.947 9.614 22 12 22c5.523 0 10-4.037 10-9s-4.477-9-10-9Z"
+              />
+            </svg>
+            <p>Chào mừng đến với Chat Nhanh!</p>
+            <p style="font-size: 16px; color: #888; font-weight: 400">
+              Bắt đầu trò chuyện với mọi người...
+            </p>
+          </div>
+          <form class="chat-input-area" autocomplete="off">
+            <input
+              type="text"
+              class="message-input"
+              placeholder="Nhập tin nhắn của bạn..."
+            />
+            <button class="send-button" type="submit">
+              <span class="ph-paper-plane-tilt"></span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  </body>
 </html>
