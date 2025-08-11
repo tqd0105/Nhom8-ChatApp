@@ -1,11 +1,12 @@
-// --- Chat realtime bằng socket.io ---
 const socket = io("http://localhost:3000");
 
 socket.on("connect", () => {
   console.log("Kết nối thành công:", socket.id);
+  // optional: báo username cho server nhớ
+  const u = document.getElementById("usernameInput")?.value || "Anonymous";
+  socket.emit("set_username", u);
 });
 
-// Nhận lịch sử tin nhắn khi mới kết nối
 socket.on("history", (messages) => {
   const ul = document.getElementById("messages");
   if (!ul) return;
@@ -18,7 +19,6 @@ socket.on("history", (messages) => {
   ul.scrollTop = ul.scrollHeight;
 });
 
-// Nhận tin nhắn mới
 socket.on("receive_message", (data) => {
   const ul = document.getElementById("messages");
   if (!ul) return;
@@ -28,12 +28,11 @@ socket.on("receive_message", (data) => {
   ul.scrollTop = ul.scrollHeight;
 });
 
-// Gửi tin nhắn cho phòng chat All
 function sendMessage() {
-  const username =
-    document.getElementById("usernameInput").value || "Anonymous";
-  const message = document.getElementById("messageInput").value.trim();
+  const username = document.getElementById("usernameInput").value || "Anonymous";
+  const message  = document.getElementById("messageInput").value.trim();
   if (!message) return;
   socket.emit("send_message", { username, message });
   document.getElementById("messageInput").value = "";
 }
+window.sendMessage = sendMessage; // <- đảm bảo gọi được từ onsubmit

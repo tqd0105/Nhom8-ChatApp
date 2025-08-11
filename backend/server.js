@@ -34,33 +34,123 @@ const io = new Server(server, {
   },
 });
 
+// ===== In-memory room members (RAM) =====
+const roomMembers = new Map();          // roomId -> Set<socket.id>
+function getMembers(roomId) {
+  return Array.from(roomMembers.get(roomId) || []);
+}
+function addMember(roomId, sid) {
+  const set = roomMembers.get(roomId) || new Set();
+  set.add(sid);
+  roomMembers.set(roomId, set);
+}
+function removeMember(roomId, sid) {
+  const set = roomMembers.get(roomId);
+  if (!set) return;
+  set.delete(sid);
+  if (set.size === 0) roomMembers.delete(roomId); // dọn phòng rỗng
+}
+
+
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // gửi lịch sử 50 tin gần nhất khi client mới kết nối
+  // Gửi history global khi connect (giữ như hiện tại)
   socket.emit("history", getGlobal(50));
 
-  // chat toàn cục
-  socket.on("send_message", (data) => {
-    // data: { username, message }
-    const msg = makeMessage({ username: data.username, message: data.message });
-    addGlobal(msg); // LƯU RAM
-    io.emit("receive_message", msg); // PHÁT CHO TẤT CẢ
+   socket.on("send_message", (data = {}) => {
+    const username = String(data.username || "Anonymous").trim().slice(0, 40);
+    const message  = String(data.message  || "").trim();
+    if (!message) return;
+
+    const msg = makeMessage({ username, message });
+    addGlobal(msg);                 // lưu RAM (global)
+    io.emit("receive_message", msg); // phát cho tất cả client
   });
 
-  // (tùy chọn) phòng chat
-  socket.on("join_room", (roomId) => {
+  // Optional: lưu tạm username vào socket.data
+  socket.on("set_username", (name) => {
+    socket.data.username = String(name || "Anonymous").trim().slice(0, 40);
+  });
+
+  // JOIN ROOM
+  socket.on("join_room", ({ roomId, username } = {}) => {
+    roomId = String(roomId || "").trim();
+    if (!roomId) return;
+
+    // cập nhật username
+    socket.data.username = String(username || socket.data.username || "Anonymous")
+                             .trim().slice(0, 40);
+
     socket.join(roomId);
+    addMember(roomId, socket.id);
+
+    // gửi lịch sử phòng cho chính người mới
     socket.emit("history_room", { roomId, messages: getRoom(roomId, 50) });
+
+    // system message + broadcast
+    const sysMsg = makeMessage({
+      username: "[system]",
+      message: `${socket.data.username} joined`,
+      roomId
+    });
+    addRoom(roomId, sysMsg);
+    io.to(roomId).emit("receive_message", sysMsg);
+
+    // cập nhật danh sách thành viên
+    io.to(roomId).emit("room_users", { roomId, members: getMembers(roomId) });
   });
 
-  socket.on("send_room_message", ({ roomId, username, message }) => {
-    const msg = makeMessage({ username, message, roomId });
-    addRoom(roomId, msg); // LƯU THEO PHÒNG
+  // GỬI TIN TRONG PHÒNG (bạn đã có — giữ nguyên, thêm username từ socket.data)
+  socket.on("send_room_message", ({ roomId, username, message } = {}) => {
+    roomId = String(roomId || "").trim();
+    const name = String(username || socket.data.username || "Anonymous").trim().slice(0, 40);
+    const text = String(message || "").trim();
+    if (!roomId || !text) return;
+
+    socket.data.username = name;
+
+    const msg = makeMessage({ username: name, message: text, roomId });
+    addRoom(roomId, msg);
     io.to(roomId).emit("receive_message", msg);
   });
 
+  // LEAVE ROOM
+  socket.on("leave_room", ({ roomId } = {}) => {
+    roomId = String(roomId || "").trim();
+    if (!roomId) return;
+
+    socket.leave(roomId);
+    removeMember(roomId, socket.id);
+
+    const sysMsg = makeMessage({
+      username: "[system]",
+      message: `${socket.data.username || "Someone"} left`,
+      roomId
+    });
+    addRoom(roomId, sysMsg);
+    io.to(roomId).emit("receive_message", sysMsg);
+
+    io.to(roomId).emit("room_users", { roomId, members: getMembers(roomId) });
+  });
+
+  // KHI NGẮT KẾT NỐI → rời tất cả phòng
   socket.on("disconnect", () => {
+    for (const [roomId, set] of roomMembers.entries()) {
+      if (set.has(socket.id)) {
+        set.delete(socket.id);
+        if (set.size === 0) roomMembers.delete(roomId);
+
+        const sysMsg = makeMessage({
+          username: "[system]",
+          message: `${socket.data.username || "Someone"} disconnected`,
+          roomId
+        });
+        addRoom(roomId, sysMsg);
+        io.to(roomId).emit("receive_message", sysMsg);
+        io.to(roomId).emit("room_users", { roomId, members: getMembers(roomId) });
+      }
+    }
     console.log("User disconnected:", socket.id);
   });
 });
