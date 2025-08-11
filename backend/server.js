@@ -172,6 +172,67 @@ app.get("/api/rooms/:roomId/messages", (req, res) => {
   res.json(getRoom(req.params.roomId, limit));
 });
 
+// ==== REST API ====
+
+// 0) Health check
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok", ts: Date.now() });
+});
+
+// 1) Global messages (đọc / gửi)
+app.get("/api/messages", (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || "50", 10), 500);
+  res.json(getGlobal(limit));
+});
+
+app.post("/api/messages", (req, res) => {
+  const username = String(req.body.username || "Anonymous").trim().slice(0, 40);
+  const message  = String(req.body.message  || "").trim();
+  if (!message) return res.status(400).json({ error: "message is required" });
+
+  const msg = makeMessage({ username, message });
+  addGlobal(msg);
+  io.emit("receive_message", msg);       // phát realtime cho mọi client
+  res.status(201).json(msg);
+});
+
+// 2) Rooms listing + stats (dựa vào roomMembers RAM)
+app.get("/api/rooms", (_req, res) => {
+  // roomMembers: Map<roomId, Set<socketId>>
+  const rooms = Array.from(roomMembers.entries()).map(([roomId, set]) => ({
+    roomId,
+    memberCount: set.size
+  }));
+  res.json(rooms);
+});
+
+// 3) Room messages (đọc / gửi)
+app.get("/api/rooms/:roomId/messages", (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || "50", 10), 500);
+  res.json(getRoom(req.params.roomId, limit));
+});
+
+app.post("/api/rooms/:roomId/messages", (req, res) => {
+  const roomId   = String(req.params.roomId || "").trim();
+  const username = String(req.body.username || "Anonymous").trim().slice(0, 40);
+  const message  = String(req.body.message  || "").trim();
+  if (!roomId)  return res.status(400).json({ error: "roomId is required" });
+  if (!message) return res.status(400).json({ error: "message is required" });
+
+  const msg = makeMessage({ username, message, roomId });
+  addRoom(roomId, msg);
+  io.to(roomId).emit("receive_message", msg); // phát cho room
+  res.status(201).json(msg);
+});
+
+// 4) Room members
+app.get("/api/rooms/:roomId/members", (req, res) => {
+  const roomId = String(req.params.roomId || "").trim();
+  const ids = Array.from(roomMembers.get(roomId) || []);
+  res.json({ roomId, members: ids });
+});
+
+
 server.listen(PORT, () => {
   console.log(`🚀 Chat Server is running at http://localhost:${PORT}`);
 });
