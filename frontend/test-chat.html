@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Chat Test</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  </head>
+  <body>
+    <input id="usernameInput" placeholder="Tên bạn" />
+    <input id="messageInput" placeholder="Nhập tin nhắn" />
+    <button onclick="sendMessage()">Gửi</button>
+    <ul id="messages"></ul>
+
+    <script>
+      const socket = io("http://localhost:3000");
+
+      socket.on("connect", () => {
+        console.log("Kết nối thành công:", socket.id);
+      });
+
+      // 👉 NHẬN LỊCH SỬ KHI MỚI KẾT NỐI (để reload không mất tin)
+      socket.on("history", (messages) => {
+        const ul = document.getElementById("messages");
+        ul.innerHTML = ""; // clear trước khi vẽ lại
+        messages.forEach((m) => {
+          const li = document.createElement("li");
+          li.innerText = `${m.username}: ${m.message}`;
+          ul.appendChild(li);
+        });
+      });
+
+      // 👉 NHẬN TIN NHẮN MỚI
+      socket.on("receive_message", (data) => {
+        const ul = document.getElementById("messages");
+        const li = document.createElement("li");
+        li.innerText = `${data.username}: ${data.message}`;
+        ul.appendChild(li);
+      });
+
+      // 👉 GỬI TIN
+      function sendMessage() {
+        const username =
+          document.getElementById("usernameInput").value || "Anonymous";
+        const message = document.getElementById("messageInput").value.trim();
+        if (!message) return;
+        socket.emit("send_message", { username, message });
+        document.getElementById("messageInput").value = "";
+      }
+    </script>
+  </body>
+</html>

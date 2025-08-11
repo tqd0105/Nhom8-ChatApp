@@ -1,29 +1,37 @@
-const express = require('express');
-const http = require('http');
-const path = require('path');
-const cors = require('cors');
-const { makeMessage, addGlobal, getGlobal, addRoom, getRoom } = require('./store');
+const express = require("express");
+const http = require("http");
+const path = require("path");
+const cors = require("cors");
+const {
+  makeMessage,
+  addGlobal,
+  getGlobal,
+  addRoom,
+  getRoom,
+} = require("./store");
 
-require('dotenv').config();
+require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
 
 // CORS cho Express (trình duyệt/Live Server)
-app.use(cors({
-  origin: ["http://localhost:3000", "http://127.0.0.1:5500"],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "http://127.0.0.1:5500"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // --- Socket.IO v4
-const { Server } = require('socket.io');
+const { Server } = require("socket.io");
 const io = new Server(server, {
   cors: {
-    origin: "*",                 // cho phép Postman / mọi origin khi TEST
-    methods: ["GET", "POST"]
-  }
+    origin: "*", // cho phép Postman / mọi origin khi TEST
+    methods: ["GET", "POST"],
+  },
 });
 
 io.on("connection", (socket) => {
@@ -36,7 +44,7 @@ io.on("connection", (socket) => {
   socket.on("send_message", (data) => {
     // data: { username, message }
     const msg = makeMessage({ username: data.username, message: data.message });
-    addGlobal(msg);                 // LƯU RAM
+    addGlobal(msg); // LƯU RAM
     io.emit("receive_message", msg); // PHÁT CHO TẤT CẢ
   });
 
@@ -48,7 +56,7 @@ io.on("connection", (socket) => {
 
   socket.on("send_room_message", ({ roomId, username, message }) => {
     const msg = makeMessage({ username, message, roomId });
-    addRoom(roomId, msg);           // LƯU THEO PHÒNG
+    addRoom(roomId, msg); // LƯU THEO PHÒNG
     io.to(roomId).emit("receive_message", msg);
   });
 
@@ -57,25 +65,23 @@ io.on("connection", (socket) => {
   });
 });
 
-
 // Serve static (không ảnh hưởng Postman)
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, "../frontend")));
 
 const PORT = process.env.PORT || 3000;
 
 // Lấy lịch sử global: GET /api/messages?limit=20
-app.get('/api/messages', (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit || '50', 10), 500);
+app.get("/api/messages", (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || "50", 10), 500);
   res.json(getGlobal(limit));
 });
 
 // Lấy lịch sử 1 phòng: GET /api/rooms/:roomId/messages?limit=20
-app.get('/api/rooms/:roomId/messages', (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit || '50', 10), 500);
+app.get("/api/rooms/:roomId/messages", (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || "50", 10), 500);
   res.json(getRoom(req.params.roomId, limit));
 });
 
-
 server.listen(PORT, () => {
-  console.log(`🚀 Chat Server is running on port ${PORT}`);
+  console.log(`🚀 Chat Server is running at http://localhost:${PORT}`);
 });

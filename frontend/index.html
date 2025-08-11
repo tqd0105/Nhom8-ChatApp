@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/frontend/styles.css" />
+    <link rel="stylesheet" href="/styles.css" />
     <title>Chat Nhanh</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -103,22 +103,32 @@
               class="ph-users"
               style="font-size: 20px; color: #5b6be1"
             ></span>
-            Phòng chat chung
+            Phòng chat All
             <span class="chat-status">Đã kết nối</span>
           </div>
           <div class="chat-box">
-            <svg width="64" height="64" fill="#5b6be1" viewBox="0 0 24 24">
-              <path
-                d="M12 2C6.477 2 2 6.037 2 11c0 2.386 1.053 4.553 2.805 6.207-.13.627-.527 2.52-1.13 4.08a.5.5 0 0 0 .65.65c1.56-.603 3.453-1 4.08-1.13C7.447 20.947 9.614 22 12 22c5.523 0 10-4.037 10-9s-4.477-9-10-9Z"
-              />
-            </svg>
-            <p>Chào mừng đến với Chat Nhanh!</p>
-            <p style="font-size: 16px; color: #888; font-weight: 400">
-              Bắt đầu trò chuyện với mọi người...
-            </p>
-          </div>
-          <form class="chat-input-area" autocomplete="off">
             <input
+              id="usernameInput"
+              placeholder="Tên bạn"
+              style="margin-bottom: 8px"
+            />
+            <ul
+              id="messages"
+              style="
+                width: 100%;
+                max-height: 300px;
+                overflow-y: auto;
+                padding: 0 0 0 10px;
+              "
+            ></ul>
+          </div>
+          <form
+            class="chat-input-area"
+            autocomplete="off"
+            onsubmit="sendMessage(); return false;"
+          >
+            <input
+              id="messageInput"
               type="text"
               class="message-input"
               placeholder="Nhập tin nhắn của bạn..."
@@ -130,6 +140,8 @@
         </div>
       </div>
     </div>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="/index.js"></script>
   </body>
 </html>
