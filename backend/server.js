@@ -51,36 +51,59 @@ function removeMember(roomId, sid) {
   if (set.size === 0) roomMembers.delete(roomId); // dọn phòng rỗng
 }
 
-
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
+
+// LOG MỌI EVENT TỪ SOCKET NÀY
+  socket.onAny((event, ...args) => {
+    console.log("[onAny]", socket.id, event, args);
+  });
+
+   socket.data.profile = {
+    userId: socket.id,
+    username: "Anonymous",
+    avatar: null, // FE có thể gán link avatar sau
+  };
+
 
   // Gửi history global khi connect (giữ như hiện tại)
   socket.emit("history", getGlobal(50));
 
-   socket.on("send_message", (data = {}) => {
-    const username = String(data.username || "Anonymous").trim().slice(0, 40);
-    const message  = String(data.message  || "").trim();
-    if (!message) return;
+  socket.on("set_profile", ({ username, avatar } = {}) => {
+    if (username) socket.data.profile.username = String(username).trim().slice(0, 40);
+    if (avatar)   socket.data.profile.avatar   = String(avatar).trim();
+  });
 
-    const msg = makeMessage({ username, message });
-    addGlobal(msg);                 // lưu RAM (global)
-    io.emit("receive_message", msg); // phát cho tất cả client
+   socket.on("send_message", (data = {}) => {
+    const text = String(data.message || "").trim();
+    if (!text) return;
+
+    const username = String(data.username || socket.data.profile.username || "Anonymous").trim().slice(0, 40);
+    const avatar   = String(data.avatar   || socket.data.profile.avatar   || "").trim();
+
+    const msg = makeMessage({
+      userId: socket.data.profile.userId,
+      username,
+      avatar,
+      message: text
+    });
+    addGlobal(msg);
+    io.emit("receive_message", msg);
+    console.log("send_message ->", msg);
   });
 
   // Optional: lưu tạm username vào socket.data
   socket.on("set_username", (name) => {
-    socket.data.username = String(name || "Anonymous").trim().slice(0, 40);
+    socket.data.profile.username = String(name || "Anonymous").trim().slice(0, 40);
   });
 
   // JOIN ROOM
-  socket.on("join_room", ({ roomId, username } = {}) => {
+  socket.on("join_room", ({ roomId, username, avatar } = {}) => {
     roomId = String(roomId || "").trim();
     if (!roomId) return;
 
-    // cập nhật username
-    socket.data.username = String(username || socket.data.username || "Anonymous")
-                             .trim().slice(0, 40);
+    if (username) socket.data.profile.username = String(username).trim().slice(0, 40);
+    if (avatar)   socket.data.profile.avatar   = String(avatar).trim();
 
     socket.join(roomId);
     addMember(roomId, socket.id);
@@ -90,8 +113,9 @@ io.on("connection", (socket) => {
 
     // system message + broadcast
     const sysMsg = makeMessage({
+      userId: "system",
       username: "[system]",
-      message: `${socket.data.username} joined`,
+      message: `${socket.data.profile.username} joined`,
       roomId
     });
     addRoom(roomId, sysMsg);
@@ -102,15 +126,22 @@ io.on("connection", (socket) => {
   });
 
   // GỬI TIN TRONG PHÒNG (bạn đã có — giữ nguyên, thêm username từ socket.data)
-  socket.on("send_room_message", ({ roomId, username, message } = {}) => {
+  socket.on("send_room_message", ({ roomId, username, avatar, message } = {}) => {
     roomId = String(roomId || "").trim();
-    const name = String(username || socket.data.username || "Anonymous").trim().slice(0, 40);
+    const name = String(username || socket.data.profile.username || "Anonymous").trim().slice(0, 40);
     const text = String(message || "").trim();
     if (!roomId || !text) return;
 
-    socket.data.username = name;
+    if (username) socket.data.profile.username = String(username).trim().slice(0, 40);
+    if (avatar)   socket.data.profile.avatar   = String(avatar).trim();
 
-    const msg = makeMessage({ username: name, message: text, roomId });
+    const msg = makeMessage({
+      userId: socket.data.profile.userId,
+      username: socket.data.profile.username,
+      avatar: socket.data.profile.avatar,
+      message: text,
+      roomId
+    });
     addRoom(roomId, msg);
     io.to(roomId).emit("receive_message", msg);
   });
@@ -124,8 +155,9 @@ io.on("connection", (socket) => {
     removeMember(roomId, socket.id);
 
     const sysMsg = makeMessage({
+      userId: "system",
       username: "[system]",
-      message: `${socket.data.username || "Someone"} left`,
+      message: `${socket.data.profile.username || "Someone"} left`,
       roomId
     });
     addRoom(roomId, sysMsg);
@@ -143,7 +175,7 @@ io.on("connection", (socket) => {
 
         const sysMsg = makeMessage({
           username: "[system]",
-          message: `${socket.data.username || "Someone"} disconnected`,
+          message: `${socket.data.profile.username || "Someone"} disconnected`,
           roomId
         });
         addRoom(roomId, sysMsg);
@@ -187,12 +219,13 @@ app.get("/api/messages", (req, res) => {
 
 app.post("/api/messages", (req, res) => {
   const username = String(req.body.username || "Anonymous").trim().slice(0, 40);
+  const avatar   = String(req.body.avatar   || "").trim();
   const message  = String(req.body.message  || "").trim();
   if (!message) return res.status(400).json({ error: "message is required" });
 
-  const msg = makeMessage({ username, message });
+  const msg = makeMessage({ userId: "api", username, avatar, message });
   addGlobal(msg);
-  io.emit("receive_message", msg);       // phát realtime cho mọi client
+  io.emit("receive_message", msg);
   res.status(201).json(msg);
 });
 
@@ -215,13 +248,14 @@ app.get("/api/rooms/:roomId/messages", (req, res) => {
 app.post("/api/rooms/:roomId/messages", (req, res) => {
   const roomId   = String(req.params.roomId || "").trim();
   const username = String(req.body.username || "Anonymous").trim().slice(0, 40);
+  const avatar   = String(req.body.avatar   || "").trim();
   const message  = String(req.body.message  || "").trim();
   if (!roomId)  return res.status(400).json({ error: "roomId is required" });
   if (!message) return res.status(400).json({ error: "message is required" });
 
-  const msg = makeMessage({ username, message, roomId });
+  const msg = makeMessage({ userId: "api", username, avatar, message, roomId });
   addRoom(roomId, msg);
-  io.to(roomId).emit("receive_message", msg); // phát cho room
+  io.to(roomId).emit("receive_message", msg);
   res.status(201).json(msg);
 });
 

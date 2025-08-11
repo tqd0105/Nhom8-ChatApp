@@ -1,50 +1,168 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Chat Test</title>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  </head>
-  <body>
-    <input id="usernameInput" placeholder="Tên bạn" />
-    <input id="messageInput" placeholder="Nhập tin nhắn" />
-    <button onclick="sendMessage()">Gửi</button>
-    <ul id="messages"></ul>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Socket.IO Test – Metadata</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:20px;background:#fafafa}
+    h2{margin:8px 0}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+    input,button{padding:8px;border:1px solid #ddd;border-radius:8px}
+    button{background:#4f46e5;color:#fff;border:none;cursor:pointer}
+    button.ghost{background:#e5e7eb;color:#111}
+    #status{font-size:14px;margin-bottom:8px}
+    .wrap{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
+    .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:12px}
+    ul{list-style:none;padding:0;margin:0;max-height:420px;overflow:auto}
+    li{display:flex;gap:8px;padding:8px;border-bottom:1px dashed #eee}
+    li .avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#ddd}
+    .meta{font-size:12px;color:#666}
+    code{background:#111;color:#0f0;padding:2px 6px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <h2>✅ Test chat (metadata: username + avatar + ts)</h2>
+  <div id="status">Đang kết nối…</div>
 
-    <script>
-      const socket = io("http://localhost:3000");
+  <div class="wrap">
+    <!-- Cột trái: điều khiển -->
+    <div class="card">
+      <h3>Hồ sơ (profile)</h3>
+      <div class="row">
+        <input id="username" placeholder="Tên (vd: Lam)" style="flex:1" />
+      </div>
+      <div class="row">
+        <input id="avatar" placeholder="Link avatar (vd: https://i.pravatar.cc/100?u=Lam)" style="flex:1" />
+      </div>
+      <div class="row">
+        <button onclick="setProfile()">Set profile</button>
+      </div>
 
-      socket.on("connect", () => {
-        console.log("Kết nối thành công:", socket.id);
-      });
+      <hr/>
 
-      // 👉 NHẬN LỊCH SỬ KHI MỚI KẾT NỐI (để reload không mất tin)
-      socket.on("history", (messages) => {
-        const ul = document.getElementById("messages");
-        ul.innerHTML = ""; // clear trước khi vẽ lại
-        messages.forEach((m) => {
-          const li = document.createElement("li");
-          li.innerText = `${m.username}: ${m.message}`;
-          ul.appendChild(li);
-        });
-      });
+      <h3>Gửi global</h3>
+      <div class="row">
+        <input id="globalMsg" placeholder="Tin nhắn global…" style="flex:1" />
+        <button onclick="sendGlobal()">Gửi</button>
+      </div>
 
-      // 👉 NHẬN TIN NHẮN MỚI
-      socket.on("receive_message", (data) => {
-        const ul = document.getElementById("messages");
-        const li = document.createElement("li");
-        li.innerText = `${data.username}: ${data.message}`;
-        ul.appendChild(li);
-      });
+      <hr/>
 
-      // 👉 GỬI TIN
-      function sendMessage() {
-        const username =
-          document.getElementById("usernameInput").value || "Anonymous";
-        const message = document.getElementById("messageInput").value.trim();
-        if (!message) return;
-        socket.emit("send_message", { username, message });
-        document.getElementById("messageInput").value = "";
-      }
-    </script>
-  </body>
+      <h3>Phòng</h3>
+      <div class="row">
+        <input id="roomId" placeholder="room-1" style="flex:1" />
+      </div>
+      <div class="row">
+        <button onclick="joinRoom()">Join room</button>
+        <button class="ghost" onclick="leaveRoom()">Leave room</button>
+      </div>
+
+      <div class="row">
+        <input id="roomMsg" placeholder="Tin nhắn trong phòng…" style="flex:1" />
+        <button onclick="sendRoom()">Gửi phòng</button>
+      </div>
+
+      <div style="margin-top:10px;font-size:13px">
+        Thành viên phòng hiện tại: <code id="roomUsers">[]</code>
+      </div>
+    </div>
+
+    <!-- Cột phải: hiển thị -->
+    <div class="card">
+      <h3>Lịch sử / Tin mới</h3>
+      <ul id="list"></ul>
+    </div>
+  </div>
+
+  <script>
+    // KẾT NỐI
+    const socket = io("http://localhost:3000");
+    const $ = (id)=>document.getElementById(id);
+    const listEl = $("list");
+
+    function renderMsg(m){
+      const li = document.createElement("li");
+      const av = document.createElement("img");
+      av.className = "avatar";
+      av.src = m.avatar || "https://placehold.co/72x72?text=?";
+
+      const right = document.createElement("div");
+      right.innerHTML =
+        `<div><strong>${m.username || "Anonymous"}</strong> — ${m.message || ""}</div>
+         <div class="meta">id: ${m.id ?? "-"} · room: ${m.roomId ?? "global"} · ts: ${new Date(m.ts||Date.now()).toLocaleTimeString()}</div>`;
+      li.appendChild(av);
+      li.appendChild(right);
+      listEl.appendChild(li);
+      listEl.scrollTop = listEl.scrollHeight;
+    }
+
+    // TRẠNG THÁI
+    socket.on("connect", ()=>{
+      $("status").innerHTML = `Đã kết nối: <code>${socket.id}</code>`;
+    });
+    socket.on("disconnect", ()=>{
+      $("status").innerHTML = `Mất kết nối`;
+    });
+
+    // HISTORY GLOBAL
+    socket.on("history", (arr)=>{
+      listEl.innerHTML = "";
+      arr.forEach(renderMsg);
+    });
+
+    // HISTORY ROOM
+    socket.on("history_room", ({roomId, messages})=>{
+      renderMsg({ username: "[system]", message: `-- History of ${roomId} --`, ts: Date.now() });
+      messages.forEach(renderMsg);
+    });
+
+    // TIN NHẮN MỚI (global hoặc room đều emit 'receive_message')
+    socket.on("receive_message", (m)=>renderMsg(m));
+
+    // THÀNH VIÊN PHÒNG
+    socket.on("room_users", ({roomId, members})=>{
+      $("roomUsers").textContent = JSON.stringify(members);
+    });
+
+    // ACTIONS
+    function setProfile(){
+      const username = $("username").value.trim();
+      const avatar = $("avatar").value.trim();
+      socket.emit("set_profile", { username, avatar });
+    }
+
+    function sendGlobal(){
+      const message = $("globalMsg").value.trim();
+      if(!message) return;
+      socket.emit("send_message", { message });
+      $("globalMsg").value = "";
+    }
+
+    function joinRoom(){
+      const roomId = $("roomId").value.trim();
+      if(!roomId) return;
+      // gửi kèm username/avatar hiện có để server cập nhật luôn (nếu muốn)
+      const username = $("username").value.trim();
+      const avatar = $("avatar").value.trim();
+      socket.emit("join_room", { roomId, username, avatar });
+    }
+
+    function leaveRoom(){
+      const roomId = $("roomId").value.trim();
+      if(!roomId) return;
+      socket.emit("leave_room", { roomId });
+    }
+
+    function sendRoom(){
+      const roomId = $("roomId").value.trim();
+      const message = $("roomMsg").value.trim();
+      if(!roomId || !message) return;
+      // có thể gửi kèm username/avatar, server sẽ ưu tiên profile hiện có
+      socket.emit("send_room_message", { roomId, message });
+      $("roomMsg").value = "";
+    }
+  </script>
+</body>
 </html>
