@@ -50,43 +50,56 @@ function removeMember(roomId, sid) {
   set.delete(sid);
   if (set.size === 0) roomMembers.delete(roomId); // dọn phòng rỗng
 }
+function emitToAll(event, payload) {
+  io.emit(event, payload);
+}
+function getUserProfile(socket) {
+  return {
+    userId: socket.data.profile.userId,
+    username: socket.data.profile.username || "Anonymous",
+    avatar: socket.data.profile.avatar || "",
+  };
+}
+
+
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
+  registerSocketEvents(socket);
 
-// LOG MỌI EVENT TỪ SOCKET NÀY
+  // LOG MỌI EVENT TỪ SOCKET NÀY
   socket.onAny((event, ...args) => {
     console.log("[onAny]", socket.id, event, args);
   });
 
-   socket.data.profile = {
+  socket.data.profile = {
     userId: socket.id,
     username: "Anonymous",
     avatar: null, // FE có thể gán link avatar sau
   };
 
-
   // Gửi history global khi connect (giữ như hiện tại)
   socket.emit("history", getGlobal(50));
+});
 
-  socket.on("set_profile", ({ username, avatar } = {}) => {
-    if (username) socket.data.profile.username = String(username).trim().slice(0, 40);
-    if (avatar)   socket.data.profile.avatar   = String(avatar).trim();
+// Move the function definition outside of io.on("connection")
+function registerSocketEvents(socket) {
+  socket.on("set_profile", (data = {}) => {
+    socket.data.profile = { ...socket.data.profile, ...data };
+    console.log("set_profile", data);
   });
 
-   socket.on("send_message", (data = {}) => {
+  socket.on("send_message", (data = {}) => {
     const text = String(data.message || "").trim();
     if (!text) return;
 
-    const username = String(data.username || socket.data.profile.username || "Anonymous").trim().slice(0, 40);
-    const avatar   = String(data.avatar   || socket.data.profile.avatar   || "").trim();
-
-    const msg = makeMessage({
+    const profile = {
       userId: socket.data.profile.userId,
-      username,
-      avatar,
-      message: text
-    });
+      username: socket.data.profile.username || "Anonymous",
+      avatar: socket.data.profile.avatar || ""
+    };
+
+    const msg = makeMessage({ ...profile, message: text });
     addGlobal(msg);
     io.emit("receive_message", msg);
     console.log("send_message ->", msg);
@@ -185,7 +198,8 @@ io.on("connection", (socket) => {
     }
     console.log("User disconnected:", socket.id);
   });
-});
+}
+
 
 // Serve static (không ảnh hưởng Postman)
 app.use(express.static(path.join(__dirname, "../frontend")));
