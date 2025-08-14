@@ -2,71 +2,70 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <title>Socket.IO Test – Metadata</title>
+  <title>Socket.IO Test – Presence & Chat</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
+    :root{--pri:#4f46e5}
     body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:20px;background:#fafafa}
     h2{margin:8px 0}
     .row{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
     input,button{padding:8px;border:1px solid #ddd;border-radius:8px}
-    button{background:#4f46e5;color:#fff;border:none;cursor:pointer}
+    input{flex:1}
+    button{background:var(--pri);color:#fff;border:none;cursor:pointer}
     button.ghost{background:#e5e7eb;color:#111}
     #status{font-size:14px;margin-bottom:8px}
-    .wrap{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
+    .wrap{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start}
     .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:12px}
     ul{list-style:none;padding:0;margin:0;max-height:420px;overflow:auto}
     li{display:flex;gap:8px;padding:8px;border-bottom:1px dashed #eee}
-    li .avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#ddd}
+    .avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#ddd}
     .meta{font-size:12px;color:#666}
     code{background:#111;color:#0f0;padding:2px 6px;border-radius:6px}
+    #onlineList li{align-items:center}
+    #onlineList img{width:20px;height:20px;border-radius:50%;object-fit:cover;background:#ddd}
   </style>
 </head>
 <body>
-  <h2>✅ Test chat (metadata: username + avatar + ts)</h2>
+  <h2>✅ Test chat + Online presence</h2>
   <div id="status">Đang kết nối…</div>
 
   <div class="wrap">
     <!-- Cột trái: điều khiển -->
     <div class="card">
       <h3>Hồ sơ (profile)</h3>
-      <div class="row">
-        <input id="username" placeholder="Tên (vd: Lam)" style="flex:1" />
-      </div>
-      <div class="row">
-        <input id="avatar" placeholder="Link avatar (vd: https://i.pravatar.cc/100?u=Lam)" style="flex:1" />
-      </div>
-      <div class="row">
-        <button onclick="setProfile()">Set profile</button>
-      </div>
+      <div class="row"><input id="username" placeholder="Tên (vd: Lam)" /></div>
+      <div class="row"><input id="avatar" placeholder="https://i.pravatar.cc/100?u=Lam" /></div>
+      <div class="row"><button onclick="setProfile()">Set profile</button></div>
 
       <hr/>
 
       <h3>Gửi global</h3>
       <div class="row">
-        <input id="globalMsg" placeholder="Tin nhắn global…" style="flex:1" />
+        <input id="globalMsg" placeholder="Tin nhắn global…" />
         <button onclick="sendGlobal()">Gửi</button>
       </div>
 
       <hr/>
 
       <h3>Phòng</h3>
-      <div class="row">
-        <input id="roomId" placeholder="room-1" style="flex:1" />
-      </div>
+      <div class="row"><input id="roomId" placeholder="room-1" /></div>
       <div class="row">
         <button onclick="joinRoom()">Join room</button>
         <button class="ghost" onclick="leaveRoom()">Leave room</button>
       </div>
-
       <div class="row">
-        <input id="roomMsg" placeholder="Tin nhắn trong phòng…" style="flex:1" />
+        <input id="roomMsg" placeholder="Tin nhắn trong phòng…" />
         <button onclick="sendRoom()">Gửi phòng</button>
       </div>
-
       <div style="margin-top:10px;font-size:13px">
         Thành viên phòng hiện tại: <code id="roomUsers">[]</code>
       </div>
+
+      <hr/>
+
+      <h3>Users online (<span id="onlineCount">0</span>)</h3>
+      <ul id="onlineList"></ul>
     </div>
 
     <!-- Cột phải: hiển thị -->
@@ -82,6 +81,7 @@
     const $ = (id)=>document.getElementById(id);
     const listEl = $("list");
 
+    // Render 1 message (global/room đều dùng)
     function renderMsg(m){
       const li = document.createElement("li");
       const av = document.createElement("img");
@@ -98,13 +98,35 @@
       listEl.scrollTop = listEl.scrollHeight;
     }
 
+    // Render danh sách online
+    function renderOnline(list) {
+      const ul = $("onlineList");
+      const count = $("onlineCount");
+      ul.innerHTML = "";
+      list.forEach(u => {
+        const li = document.createElement("li");
+        const img = document.createElement("img");
+        img.src = u.avatar || "https://placehold.co/40x40?text=?";
+        const name = document.createElement("span");
+        name.textContent = u.username || "Anonymous";
+        li.appendChild(img); li.appendChild(name);
+        ul.appendChild(li);
+      });
+      count.textContent = String(list.length);
+    }
+
     // TRẠNG THÁI
     socket.on("connect", ()=>{
       $("status").innerHTML = `Đã kết nối: <code>${socket.id}</code>`;
+      // auto set_profile nếu người dùng đã gõ sẵn tên/avatar trước khi load
+      const username = $("username").value.trim();
+      const avatar = $("avatar").value.trim();
+      if (username || avatar) socket.emit("set_profile", { username, avatar });
     });
-    socket.on("disconnect", ()=>{
-      $("status").innerHTML = `Mất kết nối`;
-    });
+    socket.on("disconnect", ()=>{ $("status").innerHTML = `Mất kết nối`; });
+
+    // ONLINE USERS (nhiệm vụ Day 9)
+    socket.on("online_users", (list)=>{ renderOnline(list); });
 
     // HISTORY GLOBAL
     socket.on("history", (arr)=>{
@@ -118,7 +140,7 @@
       messages.forEach(renderMsg);
     });
 
-    // TIN NHẮN MỚI (global hoặc room đều emit 'receive_message')
+    // TIN NHẮN MỚI
     socket.on("receive_message", (m)=>renderMsg(m));
 
     // THÀNH VIÊN PHÒNG
@@ -136,6 +158,7 @@
     function sendGlobal(){
       const message = $("globalMsg").value.trim();
       if(!message) return;
+      // server sẽ lấy username/avatar từ profile đang lưu
       socket.emit("send_message", { message });
       $("globalMsg").value = "";
     }
@@ -143,7 +166,6 @@
     function joinRoom(){
       const roomId = $("roomId").value.trim();
       if(!roomId) return;
-      // gửi kèm username/avatar hiện có để server cập nhật luôn (nếu muốn)
       const username = $("username").value.trim();
       const avatar = $("avatar").value.trim();
       socket.emit("join_room", { roomId, username, avatar });
@@ -159,7 +181,6 @@
       const roomId = $("roomId").value.trim();
       const message = $("roomMsg").value.trim();
       if(!roomId || !message) return;
-      // có thể gửi kèm username/avatar, server sẽ ưu tiên profile hiện có
       socket.emit("send_room_message", { roomId, message });
       $("roomMsg").value = "";
     }

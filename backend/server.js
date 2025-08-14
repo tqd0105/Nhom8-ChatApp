@@ -61,6 +61,36 @@ function getUserProfile(socket) {
   };
 }
 
+// ===== Presence (online users) =====
+const onlineUsers = new Map(); // socketId -> { userId, username, avatar }
+const getOnline = () => Array.from(onlineUsers.values());
+const broadcastOnline = () => io.emit("online_users", getOnline());
+
+function addOnline(socket) {
+  const p = socket.data.profile || {};
+  onlineUsers.set(socket.id, {
+    userId: p.userId,
+    username: p.username,
+    avatar: p.avatar
+  });
+}
+
+function updateOnlineFromSocket(socket) {
+  const p = socket.data.profile || {};
+  onlineUsers.set(socket.id, {
+    userId: p.userId,
+    username: p.username,
+    avatar: p.avatar
+  });
+  broadcastOnline();
+}
+
+function removeOnline(socket) {
+  onlineUsers.delete(socket.id);
+  broadcastOnline();
+}
+
+
 
 
 io.on("connection", (socket) => {
@@ -77,6 +107,9 @@ io.on("connection", (socket) => {
     username: "Anonymous",
     avatar: null, // FE có thể gán link avatar sau
   };
+  addOnline(socket);
+  socket.emit("online_users", getOnline()); // gửi cho chính client
+  broadcastOnline();                        // phát cho mọi người
 
   // Gửi history global khi connect (giữ như hiện tại)
   socket.emit("history", getGlobal(50));
@@ -87,6 +120,7 @@ function registerSocketEvents(socket) {
   socket.on("set_profile", (data = {}) => {
     socket.data.profile = { ...socket.data.profile, ...data };
     console.log("set_profile", data);
+    updateOnlineFromSocket(socket);
   });
 
   socket.on("send_message", (data = {}) => {
@@ -196,6 +230,7 @@ function registerSocketEvents(socket) {
         io.to(roomId).emit("room_users", { roomId, members: getMembers(roomId) });
       }
     }
+    removeOnline(socket);
     console.log("User disconnected:", socket.id);
   });
 }
