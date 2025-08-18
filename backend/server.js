@@ -120,6 +120,17 @@ function registerSocketEvents(socket) {
     updateOnlineFromSocket(socket);
   });
 
+  socket.on("set_username", (name) => {
+    socket.data.profile.username = String(name || "Anonymous")
+      .trim()
+      .slice(0, 40);
+  });
+
+  socket.on("set_avatar", (avatarUrl) => {
+    socket.data.profile.avatar = String(avatarUrl || "").trim();
+    updateOnlineFromSocket(socket);
+  });
+
   socket.on("send_message", (data = {}) => {
     const text = String(data.message || "").trim();
     if (!text) return;
@@ -134,13 +145,6 @@ function registerSocketEvents(socket) {
     addGlobal(msg);
     io.emit("receive_message", msg);
     console.log("send_message ->", msg);
-  });
-
-  // Optional: lưu tạm username vào socket.data
-  socket.on("set_username", (name) => {
-    socket.data.profile.username = String(name || "Anonymous")
-      .trim()
-      .slice(0, 40);
   });
 
   // JOIN ROOM

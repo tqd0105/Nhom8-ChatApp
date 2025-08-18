@@ -15,7 +15,10 @@ socket.on("history", (messages) => {
     document.getElementById("usernameInput").value || "Anonymous";
   messages.forEach((m) => {
     const li = document.createElement("li");
-    li.innerHTML = `<span>${m.username}:</span> ${m.message}`;
+    let avatarHtml = m.avatar
+      ? `<img src='${m.avatar}' style='width:28px;height:28px;border-radius:50%;object-fit:cover;margin-right:8px;vertical-align:middle;' />`
+      : "";
+    li.innerHTML = `${avatarHtml}<span>${m.username}:</span> ${m.message}`;
     if (m.username === currentUser) {
       li.className = "message message-self";
     } else {
@@ -32,7 +35,10 @@ socket.on("receive_message", (data) => {
   const currentUser =
     document.getElementById("usernameInput").value || "Anonymous";
   const li = document.createElement("li");
-  li.innerHTML = `<span>${data.username}:</span> ${data.message}`;
+  let avatarHtml = data.avatar
+    ? `<img src='${data.avatar}' style='width:28px;height:28px;border-radius:50%;object-fit:cover;margin-right:8px;vertical-align:middle;' />`
+    : "";
+  li.innerHTML = `${avatarHtml}<span>${data.username}:</span> ${data.message}`;
   if (data.username === currentUser) {
     li.className = "message message-self";
   } else {
@@ -46,8 +52,9 @@ function sendMessage() {
   const username =
     document.getElementById("usernameInput").value || "Anonymous";
   const message = document.getElementById("messageInput").value.trim();
+  const avatar = localStorage.getItem("chat_avatar") || "";
   if (!message) return;
-  socket.emit("send_message", { username, message });
+  socket.emit("send_message", { username, message, avatar });
   document.getElementById("messageInput").value = "";
 }
 window.sendMessage = sendMessage; // <- đảm bảo gọi được từ onsubmit
@@ -112,11 +119,12 @@ window.addEventListener("DOMContentLoaded", () => {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = function(ev) {
+        reader.onload = function (ev) {
           const dataUrl = ev.target.result;
           if (avatarImg) avatarImg.src = dataUrl;
           if (modalAvatarImg) modalAvatarImg.src = dataUrl;
           localStorage.setItem("chat_avatar", dataUrl);
+          socket.emit("set_avatar", dataUrl);
         };
         reader.readAsDataURL(file);
       }
