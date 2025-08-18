@@ -35,7 +35,7 @@ const io = new Server(server, {
 });
 
 // ===== In-memory room members (RAM) =====
-const roomMembers = new Map();          // roomId -> Set<socket.id>
+const roomMembers = new Map(); // roomId -> Set<socket.id>
 function getMembers(roomId) {
   return Array.from(roomMembers.get(roomId) || []);
 }
@@ -71,7 +71,7 @@ function addOnline(socket) {
   onlineUsers.set(socket.id, {
     userId: p.userId,
     username: p.username,
-    avatar: p.avatar
+    avatar: p.avatar,
   });
 }
 
@@ -80,7 +80,7 @@ function updateOnlineFromSocket(socket) {
   onlineUsers.set(socket.id, {
     userId: p.userId,
     username: p.username,
-    avatar: p.avatar
+    avatar: p.avatar,
   });
   broadcastOnline();
 }
@@ -89,9 +89,6 @@ function removeOnline(socket) {
   onlineUsers.delete(socket.id);
   broadcastOnline();
 }
-
-
-
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
@@ -109,7 +106,7 @@ io.on("connection", (socket) => {
   };
   addOnline(socket);
   socket.emit("online_users", getOnline()); // gửi cho chính client
-  broadcastOnline();                        // phát cho mọi người
+  broadcastOnline(); // phát cho mọi người
 
   // Gửi history global khi connect (giữ như hiện tại)
   socket.emit("history", getGlobal(50));
@@ -130,7 +127,7 @@ function registerSocketEvents(socket) {
     const profile = {
       userId: socket.data.profile.userId,
       username: socket.data.profile.username || "Anonymous",
-      avatar: socket.data.profile.avatar || ""
+      avatar: socket.data.profile.avatar || "",
     };
 
     const msg = makeMessage({ ...profile, message: text });
@@ -141,7 +138,9 @@ function registerSocketEvents(socket) {
 
   // Optional: lưu tạm username vào socket.data
   socket.on("set_username", (name) => {
-    socket.data.profile.username = String(name || "Anonymous").trim().slice(0, 40);
+    socket.data.profile.username = String(name || "Anonymous")
+      .trim()
+      .slice(0, 40);
   });
 
   // JOIN ROOM
@@ -149,8 +148,9 @@ function registerSocketEvents(socket) {
     roomId = String(roomId || "").trim();
     if (!roomId) return;
 
-    if (username) socket.data.profile.username = String(username).trim().slice(0, 40);
-    if (avatar)   socket.data.profile.avatar   = String(avatar).trim();
+    if (username)
+      socket.data.profile.username = String(username).trim().slice(0, 40);
+    if (avatar) socket.data.profile.avatar = String(avatar).trim();
 
     socket.join(roomId);
     addMember(roomId, socket.id);
@@ -163,7 +163,7 @@ function registerSocketEvents(socket) {
       userId: "system",
       username: "[system]",
       message: `${socket.data.profile.username} joined`,
-      roomId
+      roomId,
     });
     addRoom(roomId, sysMsg);
     io.to(roomId).emit("receive_message", sysMsg);
@@ -173,25 +173,33 @@ function registerSocketEvents(socket) {
   });
 
   // GỬI TIN TRONG PHÒNG (bạn đã có — giữ nguyên, thêm username từ socket.data)
-  socket.on("send_room_message", ({ roomId, username, avatar, message } = {}) => {
-    roomId = String(roomId || "").trim();
-    const name = String(username || socket.data.profile.username || "Anonymous").trim().slice(0, 40);
-    const text = String(message || "").trim();
-    if (!roomId || !text) return;
+  socket.on(
+    "send_room_message",
+    ({ roomId, username, avatar, message } = {}) => {
+      roomId = String(roomId || "").trim();
+      const name = String(
+        username || socket.data.profile.username || "Anonymous"
+      )
+        .trim()
+        .slice(0, 40);
+      const text = String(message || "").trim();
+      if (!roomId || !text) return;
 
-    if (username) socket.data.profile.username = String(username).trim().slice(0, 40);
-    if (avatar)   socket.data.profile.avatar   = String(avatar).trim();
+      if (username)
+        socket.data.profile.username = String(username).trim().slice(0, 40);
+      if (avatar) socket.data.profile.avatar = String(avatar).trim();
 
-    const msg = makeMessage({
-      userId: socket.data.profile.userId,
-      username: socket.data.profile.username,
-      avatar: socket.data.profile.avatar,
-      message: text,
-      roomId
-    });
-    addRoom(roomId, msg);
-    io.to(roomId).emit("receive_message", msg);
-  });
+      const msg = makeMessage({
+        userId: socket.data.profile.userId,
+        username: socket.data.profile.username,
+        avatar: socket.data.profile.avatar,
+        message: text,
+        roomId,
+      });
+      addRoom(roomId, msg);
+      io.to(roomId).emit("receive_message", msg);
+    }
+  );
 
   // LEAVE ROOM
   socket.on("leave_room", ({ roomId } = {}) => {
@@ -205,7 +213,7 @@ function registerSocketEvents(socket) {
       userId: "system",
       username: "[system]",
       message: `${socket.data.profile.username || "Someone"} left`,
-      roomId
+      roomId,
     });
     addRoom(roomId, sysMsg);
     io.to(roomId).emit("receive_message", sysMsg);
@@ -223,18 +231,20 @@ function registerSocketEvents(socket) {
         const sysMsg = makeMessage({
           username: "[system]",
           message: `${socket.data.profile.username || "Someone"} disconnected`,
-          roomId
+          roomId,
         });
         addRoom(roomId, sysMsg);
         io.to(roomId).emit("receive_message", sysMsg);
-        io.to(roomId).emit("room_users", { roomId, members: getMembers(roomId) });
+        io.to(roomId).emit("room_users", {
+          roomId,
+          members: getMembers(roomId),
+        });
       }
     }
     removeOnline(socket);
     console.log("User disconnected:", socket.id);
   });
 }
-
 
 // Serve static (không ảnh hưởng Postman)
 app.use(express.static(path.join(__dirname, "../frontend")));
@@ -267,9 +277,11 @@ app.get("/api/messages", (req, res) => {
 });
 
 app.post("/api/messages", (req, res) => {
-  const username = String(req.body.username || "Anonymous").trim().slice(0, 40);
-  const avatar   = String(req.body.avatar   || "").trim();
-  const message  = String(req.body.message  || "").trim();
+  const username = String(req.body.username || "Anonymous")
+    .trim()
+    .slice(0, 40);
+  const avatar = String(req.body.avatar || "").trim();
+  const message = String(req.body.message || "").trim();
   if (!message) return res.status(400).json({ error: "message is required" });
 
   const msg = makeMessage({ userId: "api", username, avatar, message });
@@ -283,7 +295,7 @@ app.get("/api/rooms", (_req, res) => {
   // roomMembers: Map<roomId, Set<socketId>>
   const rooms = Array.from(roomMembers.entries()).map(([roomId, set]) => ({
     roomId,
-    memberCount: set.size
+    memberCount: set.size,
   }));
   res.json(rooms);
 });
@@ -295,11 +307,13 @@ app.get("/api/rooms/:roomId/messages", (req, res) => {
 });
 
 app.post("/api/rooms/:roomId/messages", (req, res) => {
-  const roomId   = String(req.params.roomId || "").trim();
-  const username = String(req.body.username || "Anonymous").trim().slice(0, 40);
-  const avatar   = String(req.body.avatar   || "").trim();
-  const message  = String(req.body.message  || "").trim();
-  if (!roomId)  return res.status(400).json({ error: "roomId is required" });
+  const roomId = String(req.params.roomId || "").trim();
+  const username = String(req.body.username || "Anonymous")
+    .trim()
+    .slice(0, 40);
+  const avatar = String(req.body.avatar || "").trim();
+  const message = String(req.body.message || "").trim();
+  if (!roomId) return res.status(400).json({ error: "roomId is required" });
   if (!message) return res.status(400).json({ error: "message is required" });
 
   const msg = makeMessage({ userId: "api", username, avatar, message, roomId });
@@ -314,7 +328,6 @@ app.get("/api/rooms/:roomId/members", (req, res) => {
   const ids = Array.from(roomMembers.get(roomId) || []);
   res.json({ roomId, members: ids });
 });
-
 
 server.listen(PORT, () => {
   console.log(`🚀 Chat Server is running at http://localhost:${PORT}`);
