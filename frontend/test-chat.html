@@ -1,8 +1,10 @@
+test-chat.html
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <title>Socket.IO Test – Presence & Chat</title>
+  <title>Socket.IO Test – Presence, Chat & API Logs</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
@@ -24,10 +26,11 @@
     code{background:#111;color:#0f0;padding:2px 6px;border-radius:6px}
     #onlineList li{align-items:center}
     #onlineList img{width:20px;height:20px;border-radius:50%;object-fit:cover;background:#ddd}
+    #apiLog{background:#111;color:#0f0;padding:8px;border-radius:8px;max-height:220px;overflow:auto}
   </style>
 </head>
 <body>
-  <h2>✅ Test chat + Online presence</h2>
+  <h2>✅ Test chat + Online presence + API error/logs</h2>
   <div id="status">Đang kết nối…</div>
 
   <div class="wrap">
@@ -66,6 +69,19 @@
 
       <h3>Users online (<span id="onlineCount">0</span>)</h3>
       <ul id="onlineList"></ul>
+
+      <hr/>
+
+      <h3>Day 11 – Error & Logs</h3>
+      <div class="row">
+        <button onclick="pingHealth()">GET /api/health</button>
+        <button class="ghost" onclick="call404()">GET 404</button>
+      </div>
+      <div class="row">
+        <button onclick="postMessageOk()">POST /api/messages (OK)</button>
+        <button class="ghost" onclick="postMessageBad()">POST /api/messages (400)</button>
+      </div>
+      <pre id="apiLog"></pre>
     </div>
 
     <!-- Cột phải: hiển thị -->
@@ -78,6 +94,7 @@
   <script>
     // KẾT NỐI
     const socket = io("http://localhost:3000");
+    const API = "http://localhost:3000";
     const $ = (id)=>document.getElementById(id);
     const listEl = $("list");
 
@@ -98,21 +115,62 @@
       listEl.scrollTop = listEl.scrollHeight;
     }
 
-    // Render danh sách online
-    function renderOnline(list) {
-      const ul = $("onlineList");
-      const count = $("onlineCount");
-      ul.innerHTML = "";
-      list.forEach(u => {
-        const li = document.createElement("li");
-        const img = document.createElement("img");
-        img.src = u.avatar || "https://placehold.co/40x40?text=?";
-        const name = document.createElement("span");
-        name.textContent = u.username || "Anonymous";
-        li.appendChild(img); li.appendChild(name);
-        ul.appendChild(li);
-      });
-      count.textContent = String(list.length);
+    // ==== API test (Day 11) ====
+    function logApi(title, data) {
+      const pre = $("apiLog");
+      const line = `\n=== ${title} ===\n` + JSON.stringify(data, null, 2) + "\n";
+      pre.textContent += line;
+      pre.scrollTop = pre.scrollHeight;
+    }
+
+    async function pingHealth() {
+      try {
+        const res = await fetch(`${API}/api/health`);
+        const json = await res.json();
+        logApi("GET /api/health", { status: res.status, json, reqId: res.headers.get('x-request-id') });
+      } catch (e) {
+        logApi("GET /api/health ERROR", { message: e.message });
+      }
+    }
+
+    async function call404() {
+      try {
+        const res = await fetch(`${API}/api/nope`);
+        const json = await res.json();
+        logApi("GET /api/nope (404)", { status: res.status, json, reqId: res.headers.get('x-request-id') });
+      } catch (e) {
+        logApi("GET /api/nope ERROR", { message: e.message });
+      }
+    }
+
+    async function postMessageOk() {
+      try {
+        const body = { username: $("username").value || "Tester", message: "Hello from REST" };
+        const res = await fetch(`${API}/api/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        logApi("POST /api/messages (OK)", { status: res.status, json, reqId: res.headers.get('x-request-id') });
+      } catch (e) {
+        logApi("POST /api/messages (OK) ERROR", { message: e.message });
+      }
+    }
+
+    async function postMessageBad() {
+      try {
+        // Thiếu 'message' để BE trả 400
+        const res = await fetch(`${API}/api/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: "BadUser" })
+        });
+        const json = await res.json();
+        logApi("POST /api/messages (400)", { status: res.status, json, reqId: res.headers.get('x-request-id') });
+      } catch (e) {
+        logApi("POST /api/messages (400) ERROR", { message: e.message });
+      }
     }
 
     // TRẠNG THÁI
@@ -125,7 +183,7 @@
     });
     socket.on("disconnect", ()=>{ $("status").innerHTML = `Mất kết nối`; });
 
-    // ONLINE USERS (nhiệm vụ Day 9)
+    // ONLINE USERS
     socket.on("online_users", (list)=>{ renderOnline(list); });
 
     // HISTORY GLOBAL
@@ -147,6 +205,27 @@
     socket.on("room_users", ({roomId, members})=>{
       $("roomUsers").textContent = JSON.stringify(members);
     });
+
+    // Lỗi từ socket (nếu BE emit)
+    socket.on("error", (e) => { logApi("SOCKET error", e); });
+    socket.on("error_message", (e) => { logApi("SOCKET error_message", e); });
+
+    // Render danh sách online
+    function renderOnline(list) {
+      const ul = $("onlineList");
+      const count = $("onlineCount");
+      ul.innerHTML = "";
+      list.forEach(u => {
+        const li = document.createElement("li");
+        const img = document.createElement("img");
+        img.src = u.avatar || "https://placehold.co/40x40?text=?";
+        const name = document.createElement("span");
+        name.textContent = u.username || "Anonymous";
+        li.appendChild(img); li.appendChild(name);
+        ul.appendChild(li);
+      });
+      count.textContent = String(list.length);
+    }
 
     // ACTIONS
     function setProfile(){

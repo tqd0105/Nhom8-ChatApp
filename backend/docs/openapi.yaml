@@ -1,0 +1,161 @@
+
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Chat Backend API
+  version: 1.0.0
+  description: REST endpoints for chat app (global, rooms, presence)
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  ts: { type: integer, format: int64, example: 1734420000000 }
+
+  /api/messages:
+    get:
+      summary: Get latest global messages
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+      responses:
+        '200':
+          description: An array of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+    post:
+      summary: Post a new global message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                username: { type: string, example: Lam }
+                avatar:   { type: string, example: https://i.pravatar.cc/100?u=Lam }
+                message:  { type: string, example: Hello world! }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          description: Bad Request
+
+  /api/rooms:
+    get:
+      summary: List rooms and members count
+      responses:
+        '200':
+          description: Rooms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    roomId: { type: string, example: room-1 }
+                    memberCount: { type: integer, example: 2 }
+
+  /api/rooms/{roomId}/messages:
+    get:
+      summary: Get room messages
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+      responses:
+        '200':
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+    post:
+      summary: Post message to a room
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                username: { type: string, example: Lam }
+                avatar:   { type: string, example: https://i.pravatar.cc/100?u=Lam }
+                message:  { type: string, example: Hi room }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          description: Bad Request
+
+  /api/rooms/{roomId}/members:
+    get:
+      summary: Get room members (socket ids)
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roomId: { type: string }
+                  members:
+                    type: array
+                    items: { type: string }
+
+components:
+  schemas:
+    Message:
+      type: object
+      properties:
+        id:       { type: integer, example: 1 }
+        userId:   { type: string, example: socket-abc }
+        username: { type: string, example: Lam }
+        avatar:   { type: string, example: https://i.pravatar.cc/100?u=Lam }
+        message:  { type: string, example: Hello }
+        roomId:   { type: string, nullable: true, example: null }
+        ts:       { type: integer, format: int64, example: 1734420000000 }
