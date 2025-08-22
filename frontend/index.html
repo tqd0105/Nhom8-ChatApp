@@ -3,404 +3,736 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/styles.css" />
-    <title>Chat Nhanh</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <title>Chat Nhanh - Trò chuyện online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link
-      href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap"
       rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
-    <script src="https://unpkg.com/phosphor-icons"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap");
+
+      :root {
+        --primary-color: #3b82f6;
+        --secondary-color: #10b981;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        /* Blue Zodiac Submarine (#112D60 -> #B6C0C5) */
+        background: #112d60; /* fallback */
+        background: linear-gradient(
+          135deg,
+          #112d60 0%,
+          #1c385d 22%,
+          #2f4b62 45%,
+          #556978 65%,
+          #7f8a95 80%,
+          #b6c0c5 100%
+        );
+        min-height: 100vh;
+      }
+
+      .logo {
+        font-weight: 700;
+        font-size: 1.5rem;
+        background: linear-gradient(
+          90deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .chat-container {
+        /* Layered shadow + border subtle for depth trên nền tối (bỏ blur) */
+        box-shadow: 0 12px 28px -8px rgba(17, 45, 96, 0.35),
+          0 4px 16px -2px rgba(0, 0, 0, 0.18),
+          0 0 0 1px rgba(255, 255, 255, 0.06),
+          0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
+          0 0 0 4px rgba(255, 255, 255, 0.03) inset;
+      }
+
+      /* Bong bóng tin nhắn cải tiến – tự co giãn, wrap đẹp */
+      .message-outgoing,
+      .message-incoming {
+        display: inline-block;
+        max-width: min(60%, 64ch);
+        min-width: 6ch;
+        padding: 10px 14px 12px;
+        margin: 6px 0;
+        border-radius: 18px;
+        font-size: 15px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        /* Chỉ xuống dòng ở điểm hợp lý, tránh tách ký tự đơn lẻ */
+        overflow-wrap: break-word;
+        word-break: normal;
+        position: relative;
+        box-shadow: 0 4px 12px -3px rgba(0, 0, 0, 0.08),
+          0 1px 3px rgba(0, 0, 0, 0.06);
+        animation: bubbleIn 0.16s ease-out;
+      }
+      .message-outgoing {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: #fff;
+        border-bottom-right-radius: 6px;
+      }
+      .message-incoming {
+        background: #f1f5f9;
+        color: #1f2937;
+        border-bottom-left-radius: 6px;
+      }
+      .message-outgoing strong,
+      .message-incoming strong {
+        font-weight: 600;
+        display: inline;
+        margin-right: 4px;
+        white-space: nowrap; /* Giữ tên + dấu : trên cùng một dòng */
+      }
+
+      .msg-time {
+        font-size: 11px;
+        opacity: 0.7;
+        margin-left: 6px;
+        white-space: nowrap;
+      }
+
+      /* Hiệu ứng xuất hiện mượt hơn cho tin nhắn mới */
+      .message-appear {
+        opacity: 0;
+        transform: translateY(6px) scale(0.96);
+        animation: messageIn 260ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      }
+      @keyframes messageIn {
+        60% {
+          opacity: 1;
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      /* Tùy chọn: hiệu ứng khác nhau cho chiều */
+      .from-me.message-appear {
+        animation-duration: 220ms;
+      }
+      .from-other.message-appear {
+        animation-duration: 300ms;
+      }
+      @keyframes bubbleIn {
+        from {
+          opacity: 0;
+          transform: translateY(4px) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      @media (max-width: 640px) {
+        .message-outgoing,
+        .message-incoming {
+          max-width: 80%;
+          font-size: 14px;
+        }
+      }
+
+      .typing-indicator span {
+        animation: bounce 1.5s infinite ease-in-out;
+      }
+
+      .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes bounce {
+        0%,
+        60%,
+        100% {
+          transform: translateY(0);
+        }
+        30% {
+          transform: translateY(-5px);
+        }
+      }
+
+      .online-status {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .online {
+        background-color: var(--secondary-color);
+      }
+
+      .offline {
+        background-color: #6b7280;
+      }
+
+      .join-room-btn {
+        transition: all 0.3s;
+      }
+
+      .join-room-btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .user-count-badge {
+        font-size: 0.75rem;
+      }
+      /* ===== Mobile Enhancements (Không ảnh hưởng PC) ===== */
+      @media (max-width: 768px) {
+        body {
+          padding: 0 !important;
+        }
+        .chat-container {
+          height: 100dvh;
+          border-radius: 0;
+          position: relative;
+        }
+        #sidebar-panel {
+          width: 78%;
+          max-width: 300px;
+        }
+        #messages-container {
+          padding-bottom: 120px;
+        }
+        #mobile-close-sidebar {
+          display: inline-flex;
+        }
+        #sidebar-overlay {
+          background: transparent;
+        }
+        .chat-header {
+          padding: 0.75rem 0.85rem;
+        }
+        .chat-header h2 {
+          font-size: 1rem;
+        }
+        #message-composer {
+          position: fixed;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          padding: 0.6rem 0.75rem calc(env(safe-area-inset-bottom) + 0.55rem);
+          background: #ffffff;
+          box-shadow: 0 -4px 18px -6px rgba(0, 0, 0, 0.08),
+            0 -1px 3px rgba(0, 0, 0, 0.05);
+          border-top: 1px solid rgba(0, 0, 0, 0.04);
+        }
+        #message-form input {
+          background: #f1f5f9;
+        }
+        #message-form button[type="submit"] {
+          box-shadow: 0 4px 10px -2px rgba(59, 130, 246, 0.45);
+        }
+      }
+      @media (max-width: 480px) {
+        .message-outgoing,
+        .message-incoming {
+          max-width: 88%;
+          font-size: 14px;
+        }
+        .chat-header h2 {
+          font-size: 0.95rem;
+        }
+        #message-form input {
+          font-size: 0.85rem;
+        }
+      }
+      .safe-bottom {
+        padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+      }
+      #messages-container {
+        scrollbar-width: thin;
+      }
+      #messages-container::-webkit-scrollbar {
+        width: 6px;
+      }
+      #messages-container::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #messages-container::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 20px;
+      }
+      /* Backdrop mờ tối dành riêng cho modal tham gia phòng */
+      .join-room-backdrop {
+        background: rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(4px);
+      }
+      @media (prefers-reduced-transparency: reduce) {
+        .join-room-backdrop {
+          backdrop-filter: none;
+        }
+      }
+    </style>
   </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <span style="display: flex; align-items: center; gap: 8px">
-          <svg width="28" height="28" fill="#5b6be1" viewBox="0 0 24 24">
-            <path
-              d="M12 2C6.477 2 2 6.037 2 11c0 2.386 1.053 4.553 2.805 6.207-.13.627-.527 2.52-1.13 4.08a.5.5 0 0 0 .65.65c1.56-.603 3.453-1 4.08-1.13C7.447 20.947 9.614 22 12 22c5.523 0 10-4.037 10-9s-4.477-9-10-9Z"
-            />
-          </svg>
-          Chat Nhanh
-        </span>
-        <div style="display: flex; align-items: center; gap: 12px">
-          <img
-            id="avatarImg"
-            src="/default-avatar.png"
-            alt="avatar"
-            style="
-              width: 32px;
-              height: 32px;
-              border-radius: 50%;
-              object-fit: cover;
-              border: 1.5px solid #5b6be1;
-            "
-          />
-          <input
-            type="file"
-            id="avatarInput"
-            accept="image/*"
-            style="display: none"
-          />
-          <button
-            id="profileBtn"
-            style="
-              background: none;
-              border: none;
-              cursor: pointer;
-              margin-left: 0;
-            "
-          >
-            <svg width="28" height="28" fill="#5b6be1" viewBox="0 0 24 24">
-              <path
-                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+  <body class="min-h-screen flex items-center justify-center p-4">
+    <div
+      class="chat-container bg-white rounded-2xl w-full max-w-6xl flex flex-col md:flex-row h-screen md:h-[90vh] overflow-hidden"
+    >
+      <!-- Sidebar - Danh sách cuộc trò chuyện -->
+      <div
+        id="sidebar-panel"
+        aria-hidden="true"
+        class="md:w-1/3 border-r border-gray-200 flex flex-col bg-white z-50 md:relative transition-transform transform duration-200 ease-out md:translate-x-0 -translate-x-full fixed top-0 left-0 h-full w-72 md:w-auto md:h-auto md:flex shadow-xl md:shadow-none will-change-transform"
+      >
+        <!-- Header với logo và nút cài đặt -->
+        <div
+          class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center"
+        >
+          <div class="flex items-center">
+            <div
+              class="mr-2 p-[2px] rounded-xl bg-gradient-to-tr from-blue-500 via-sky-400 to-emerald-400 shadow-sm transition transform hover:scale-110 hover:shadow-md"
+            >
+              <img
+                src="./img/logo.webp"
+                alt="Logo Chat Nhanh"
+                class="w-8 h-8 rounded-lg block bg-white/90 backdrop-blur"
               />
-            </svg>
+            </div>
+            <h1 class="logo">Chat Nhanh</h1>
+          </div>
+          <div class="flex items-center space-x-3">
+            <span
+              class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full user-count-badge"
+            >
+              <i class="fas fa-users mr-1"></i>
+              <span id="online-count">152</span> online
+            </span>
+            <button id="settings-btn" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-cog text-lg"></i>
+            </button>
+            <!-- Nút đóng sidebar chỉ hiện trên mobile -->
+            <button
+              id="mobile-close-sidebar"
+              class="hidden sm:hidden w-9 h-9 rounded-lg text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 items-center justify-center"
+              aria-label="Đóng sidebar"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Nút tham gia phòng -->
+        <div class="p-3 bg-blue-50 border-b border-blue-100">
+          <button
+            id="join-room-btn"
+            class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center justify-center join-room-btn"
+          >
+            <i class="fas fa-plus-circle mr-2"></i>
+            Tham gia phòng chat
           </button>
         </div>
-        <!-- Đã xóa các icon góc trên bên phải -->
-      </div>
-      <div class="main-content">
-        <div class="sidebar">
-          <div
-            class="sidebar-header"
-            style="
-              padding: 24px 24px 0 24px;
-              font-size: 20px;
-              font-weight: 700;
-              color: #5b6be1;
-            "
-          >
-            Chat Nhanh
-          </div>
-          <div
-            class="sidebar-greeting"
-            style="padding: 0 24px 12px 24px; color: #888; font-size: 15px"
-          >
-            Chào mừng bạn đến với Chat Nhanh! Hãy nhập tên của bạn để bắt đầu.
-          </div>
-          <div
-            class="sidebar-tabs"
-            style="
-              display: flex;
-              border-bottom: 1px solid #e5e7eb;
-              margin: 0 24px 8px 24px;
-            "
-          >
-            <button
-              class="sidebar-tab active"
-              style="
-                flex: 1;
-                text-align: center;
-                padding: 10px 0 8px 0;
-                font-size: 15px;
-                color: #5b6be1;
-                background: none;
-                border: none;
-                border-radius: 12px 12px 0 0;
-              "
-            >
-              Bạn bè
-            </button>
-            <button
-              class="sidebar-tab"
-              id="onlineTabBtn"
-              style="
-                flex: 1;
-                text-align: center;
-                padding: 10px 0 8px 0;
-                font-size: 15px;
-                color: #5b6be1;
-                background: none;
-                border: none;
-                border-radius: 12px 12px 0 0;
-                position: relative;
-              "
-            >
-              Online
-              <span id="onlineTabCount" style="font-weight: 600; color: #5b6be1"
-                >(0)</span
-              >
-            </button>
-            <button
-              class="sidebar-tab"
-              style="
-                flex: 1;
-                text-align: center;
-                padding: 10px 0 8px 0;
-                font-size: 15px;
-                color: #5b6be1;
-                background: none;
-                border: none;
-                border-radius: 12px 12px 0 0;
-              "
-            >
-              Phòng
-            </button>
-          </div>
-          <div class="search-box" style="padding: 0 24px 16px 24px">
-            <input
-              type="text"
-              class="search-input"
-              placeholder="Tìm bạn bằng email..."
-              style="
-                width: calc(100% - 40px);
-                padding: 10px 14px;
-                border-radius: 12px;
-                border: 1px solid #e5e7eb;
-                font-size: 15px;
-              "
-            />
-            <button
-              class="search-btn"
-              style="
-                background: #5b6be1;
-                color: #fff;
-                border: none;
-                border-radius: 12px;
-                width: 32px;
-                height: 32px;
-                margin-left: 8px;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                transition: background 0.2s;
-              "
-            >
-              <svg
-                width="18"
-                height="18"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M12 4a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm0 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm7-1.41-3.87-3.87A5.98 5.98 0 0 0 18 12a6 6 0 1 0-6 6c1.31 0 2.53-.42 3.54-1.13l3.87 3.87a1 1 0 0 0 1.41-1.41z"
-                ></path>
-              </svg>
-            </button>
-          </div>
-          <div
-            class="friend-section"
-            id="friendSection"
-            style="display: none; padding: 0 24px"
-          >
-            <ul
-              class="friend-list"
-              id="friendList"
-              style="list-style: none; padding: 0; margin: 0"
-            >
-              <!-- Không có user mẫu, sẽ render động nếu có dữ liệu -->
-            </ul>
-          </div>
-          <div class="invite-section" style="padding: 0 24px 16px 24px">
-            <div class="invite-title" style="font-weight: 600; color: #5b6be1">
-              Lời mời kết bạn (0)
+
+        <!-- Danh sách cuộc trò chuyện (được render động) -->
+        <div class="flex-1 overflow-y-auto" id="conversation-list">
+          <!-- Rooms sẽ được thêm bằng JavaScript khi người dùng tham gia -->
+        </div>
+
+        <!-- Thông tin người dùng hiện tại -->
+        <div class="p-4 border-t border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <img
+                id="sidebar-avatar"
+                src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/023f3a09-10e0-4be5-b674-dd9f20cff6ac.png"
+                alt="Ảnh đại diện của bạn"
+                class="rounded-full w-10 h-10 object-cover"
+              />
+              <div class="ml-3">
+                <h3 class="font-medium text-gray-900" id="sidebar-username">
+                  Tôi
+                </h3>
+                <div class="flex items-center">
+                  <span class="online-status online"></span>
+                  <span class="text-xs text-gray-500 ml-1">Online</span>
+                </div>
+              </div>
             </div>
-            <div class="invite-empty" style="color: #888; font-size: 15px">
-              Không có lời mời nào
-            </div>
-          </div>
-          <div
-            class="sidebar-settings"
-            style="position: absolute; bottom: 24px; left: 24px"
-          >
-            <button
-              style="
-                background: #5b6be1;
-                color: #fff;
-                border: none;
-                border-radius: 50%;
-                width: 40px;
-                height: 40px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-                cursor: pointer;
-                transition: background 0.2s;
-              "
-            >
-              <svg
-                width="22"
-                height="22"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7zm7.43-2.88-.94-.32a7.03 7.03 0 0 0-.37-1.01l.6-.8a.5.5 0 0 0-.06-.66l-1.42-1.42a.5.5 0 0 0-.66-.06l-.8.6c-.32-.13-.65-.24-1.01-.37l-.32-.94A.5.5 0 0 0 15 7h-2a.5.5 0 0 0-.5.41l-.32.94c-.36.13-.69.24-1.01.37l-.8-.6a.5.5 0 0 0-.66.06L7.41 9.41a.5.5 0 0 0-.06.66l.6.8c-.13.32-.24.65-.37 1.01l-.94.32A.5.5 0 0 0 5 13v2c0 .22.14.41.34.48l.94.32c.13.36.24.69.37 1.01l-.6.8a.5.5 0 0 0 .06.66l1.42 1.42a.5.5 0 0 0 .66.06l.8-.6c.32.13.65.24 1.01.37l.32.94A.5.5 0 0 0 9 17h2c.22 0 .41-.14.48-.34l.32-.94c.36-.13.69-.24 1.01-.37l.8.6a.5.5 0 0 0 .66-.06l1.42-1.42a.5.5 0 0 0 .06-.66l-.6-.8c.13-.32.24-.65.37-1.01l.94-.32A.5.5 0 0 0 19 15v-2c0-.22-.14-.41-.34-.48z"
-                ></path>
-              </svg>
-            </button>
           </div>
         </div>
-        <div class="chat-area">
-          <div class="chat-header">
-            <span style="display: flex; align-items: center; gap: 8px">
-              <svg width="22" height="22" fill="#5b6be1" viewBox="0 0 24 24">
-                <path
-                  d="M17 10c1.654 0 3 1.346 3 3s-1.346 3-3 3c-.342 0-.676-.057-.995-.166C15.999 16.112 16 16.056 16 16c0-1.654-1.346-3-3-3-.056 0-.112.001-.166.005C12.057 13.324 12 13.658 12 14c0 1.654-1.346 3-3 3s-3-1.346-3-3c0-.342.057-.676.166-.995C7.888 13.999 7.944 14 8 14c1.654 0 3-1.346 3-3 0-.056-.001-.112-.005-.166C10.676 10.057 10.342 10 10 10c-1.654 0-3 1.346-3 3 0 .342.057.676.166.995C6.001 13.944 6 13.888 6 13.832V13c0-1.654 1.346-3 3-3 .342 0 .676.057.995.166C9.999 9.888 10 9.944 10 10c0 1.654 1.346 3 3 3 .056 0 .112-.001.166-.005C13.943 12.676 14 12.342 14 12c0-1.654-1.346-3-3-3-.342 0-.676.057-.995.166C10.001 8.888 10 8.944 10 9c0 1.654 1.346 3 3 3 .056 0 .112-.001.166-.005C13.943 11.676 14 11.342 14 11c0-1.654-1.346-3-3-3-.342 0-.676.057-.995.166C10.001 7.888 10 7.944 10 8c0 1.654 1.346 3 3 3 .056 0 .112-.001.166-.005C13.943 10.676 14 10.342 14 10c0-1.654-1.346-3-3-3-.342 0-.676.057-.995.166C10.001 6.888 10 6.944 10 7c0 1.654 1.346 3 3 3 .056 0 .112-.001.166-.005C13.943 9.676 14 9.342 14 9c0-1.654-1.346-3-3-3-.342 0-.676.057-.995.166C10.001 5.888 10 5.944 10 6c0 1.654 1.346 3 3 3 .056 0 .112-.001.166-.005C13.943 8.676 14 8.342 14 8c0-1.654-1.346-3-3-3-.342 0-.676.057-.995.166C10.001 4.888 10 4.944 10 5c0 1.654 1.346 3 3 3 .056 0 .112-.001.166-.005C13.943 7.676 14 7.342 14 7c0-1.654-1.346-3-3-3-.342 0-.676.057-.995.166C10.001 3.888 10 3.944 10 4c0 1.654 1.346 3 3 3 .056 0 .112-.001.166-.005C13.943 6.676 14 6.342 14 6c0-1.654-1.346-3-3-3-.342 0-.676.057-.995.166C10.001 2.888 10 2.944 10 3c0 1.654 1.346 3 3 3 .056 0 .112-.001.166-.005C13.943 5.676 14 5.342 14 5c0-1.654-1.346-3-3-3-.342 0-.676.057-.995.166C10.001 1.888 10 1.944 10 2c0 1.654 1.346 3 3 3z"
-                />
-              </svg>
-              <span style="font-size: 20px; color: #222; font-weight: 600"
-                >Phòng Chat all</span
+      </div>
+
+      <!-- Main chat area -->
+      <div
+        class="flex-1 flex flex-col md:border-l border-gray-200"
+        id="chat-area"
+      >
+        <!-- Header với thông tin phòng/người chat -->
+        <div
+          class="p-4 border-b border-gray-200 flex items-center justify-between relative"
+        >
+          <div class="flex items-center gap-3">
+            <!-- Mobile open sidebar button -->
+            <button
+              id="open-sidebar-btn"
+              class="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Mở danh sách phòng"
+            >
+              <i class="fas fa-bars"></i>
+            </button>
+            <div class="relative">
+              <img
+                src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/f17e4c6a-1e94-422b-8a49-b7cf0dd38dfd.png"
+                alt="Ảnh đại diện phòng chat"
+                class="rounded-full w-10 h-10 object-cover"
+              />
+              <span
+                class="online-status online absolute bottom-0 right-0 border-2 border-white"
+              ></span>
+            </div>
+            <div class="ml-3">
+              <h2 class="font-semibold" id="current-chat-name">
+                Phòng chat chung
+              </h2>
+              <div class="flex items-center">
+                <span class="online-status online"></span>
+                <span class="text-xs text-gray-500 ml-1">
+                  <span id="room-members-count">15</span> thành viên online
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button class="text-gray-500 hover:text-gray-700" id="room-info-btn">
+            <i class="fas fa-info-circle"></i>
+          </button>
+        </div>
+
+        <!-- Khung tin nhắn -->
+        <div
+          class="flex-1 overflow-y-auto p-4 bg-gray-50"
+          id="messages-container"
+        ></div>
+
+        <!-- Form gửi tin nhắn -->
+        <div id="message-composer" class="p-4 border-t border-gray-200">
+          <form id="message-form" class="flex items-center gap-2">
+            <div class="flex-1 relative">
+              <input
+                type="text"
+                placeholder="Nhập tin nhắn..."
+                class="w-full px-4 py-2 pr-10 rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                id="emoji-btn"
+                aria-label="Chọn emoji"
+                class="absolute right-2 top-2 text-gray-500 hover:text-blue-500"
               >
-            </span>
-          </div>
-          <div
-            class="chat-box"
-            style="
-              height: calc(100vh - 160px);
-              width: 100%;
-              display: flex;
-              flex-direction: column;
-              justify-content: flex-end;
-            "
-          >
-            <input
-              id="usernameInput"
-              placeholder="Tên bạn"
-              style="margin-bottom: 8px; display: none"
-            />
-            <ul
-              id="messages"
-              style="
-                width: 100%;
-                height: 100%;
-                max-height: 100%;
-                overflow-y: auto;
-                padding: 24px 24px 5px 24px;
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-              "
-            ></ul>
-          </div>
-          <form
-            class="chat-input-area"
-            autocomplete="off"
-            onsubmit="sendMessage(); return false;"
-          >
-            <input
-              id="messageInput"
-              type="text"
-              class="message-input"
-              placeholder="Nhập tin nhắn của bạn..."
-            />
-            <button class="send-button" type="submit">
-              <span class="ph-paper-plane-tilt"></span>
+                <i class="far fa-smile"></i>
+              </button>
+            </div>
+            <button
+              type="submit"
+              class="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 flex items-center justify-center w-12 h-12"
+            >
+              <i class="fas fa-paper-plane"></i>
             </button>
           </form>
         </div>
       </div>
     </div>
-    <!-- Modal nhập tên và cập nhật avatar -->
+
+    <!-- Modal tham gia phòng -->
     <div
-      id="profileModal"
-      style="
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.2);
-        z-index: 1000;
-        align-items: center;
-        justify-content: center;
-      "
+      id="join-room-modal"
+      class="fixed inset-0 hidden flex items-center justify-center z-50 join-room-backdrop"
     >
       <div
-        style="
-          background: #fff;
-          padding: 32px 24px;
-          border-radius: 12px;
-          box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
-          min-width: 320px;
-          max-width: 90vw;
-          margin: auto;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          align-items: center;
-        "
+        class="bg-white rounded-lg p-6 max-w-md w-full shadow-xl"
+        role="dialog"
+        aria-modal="true"
       >
-        <h3>Nhập tên của bạn</h3>
-        <img
-          id="modalAvatarImg"
-          src="/default-avatar.png"
-          alt="avatar"
-          style="
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1.5px solid #5b6be1;
-            margin-bottom: 8px;
-          "
-        />
-        <button
-          id="changeAvatarBtn"
-          style="
-            background: #eee;
-            color: #222;
-            padding: 6px 16px;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            cursor: pointer;
-            margin-bottom: 8px;
-          "
-        >
-          Cập nhật avatar
-        </button>
-        <input
-          id="profileNameInput"
-          type="text"
-          placeholder="Tên của bạn"
-          style="
-            padding: 10px 16px;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            width: 100%;
-            font-size: 16px;
-          "
-        />
-        <div style="display: flex; gap: 12px; margin-top: 8px">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">Tham gia phòng chat</h3>
           <button
-            id="saveProfileBtn"
-            style="
-              background: #5b6be1;
-              color: #fff;
-              padding: 8px 20px;
-              border: none;
-              border-radius: 8px;
-              font-size: 16px;
-              cursor: pointer;
-            "
+            id="close-modal-btn"
+            class="text-gray-500 hover:text-gray-700"
           >
-            Lưu
+            <i class="fas fa-times"></i>
           </button>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Số phòng (1-50)</label
+          >
+          <input
+            type="number"
+            id="room-number"
+            min="1"
+            max="50"
+            placeholder="Nhập số phòng từ 1 đến 50"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+
+        <div class="mb-4">
+          <!-- Đã xóa trường nhập mật khẩu -->
+        </div>
+
+        <button
+          id="confirm-join-btn"
+          class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
+        >
+          Tham gia ngay
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal cài đặt -->
+    <div
+      id="settings-modal"
+      class="fixed inset-0 hidden flex items-center justify-center z-50 bg-black/40 backdrop-blur-sm transition-opacity"
+    >
+      <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">Cài đặt người dùng</h3>
           <button
-            id="closeProfileBtn"
-            style="
-              background: #eee;
-              color: #222;
-              padding: 8px 20px;
-              border: none;
-              border-radius: 8px;
-              font-size: 16px;
-              cursor: pointer;
-            "
+            id="close-settings-btn"
+            class="text-gray-500 hover:text-gray-700"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center mb-6">
+          <div class="relative">
+            <img
+              src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/d3436adc-f537-4894-9817-5e85ab3dad00.png"
+              alt="Ảnh đại diện người dùng"
+              class="rounded-full w-16 h-16 object-cover"
+              id="avatar-img"
+            />
+            <button
+              id="update-avatar-btn"
+              class="absolute bottom-0 right-0 bg-blue-500 text-white p-1 rounded-full hover:bg-blue-600"
+            >
+              <i class="fas fa-camera text-xs"></i>
+            </button>
+          </div>
+
+          <div class="ml-4 flex flex-col gap-2">
+            <h4 class="font-medium">Tên hiển thị</h4>
+            <input
+              type="text"
+              value="Người dùng"
+              class="mt-1 px-2 py-1 border border-gray-300 rounded"
+              id="display-name-input"
+            />
+            <button
+              id="save-display-name-btn"
+              class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 mt-1 self-start"
+            >
+              Lưu tên
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Đã xóa các tính năng: Chủ đề, Nhận thông báo, Âm báo tin nhắn mới -->
+        </div>
+
+        <div class="mt-6 pt-4 border-t">
+          <!-- Đã xóa nút Đăng xuất -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal giới thiệu (Info) -->
+    <div
+      id="info-modal"
+      class="fixed inset-0 bg-transparent hidden flex items-center justify-center z-50"
+      aria-labelledby="info-modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        class="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg relative animate-fade-in"
+      >
+        <button
+          id="close-info-btn"
+          class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition"
+          aria-label="Đóng"
+        >
+          <i class="fas fa-times"></i>
+        </button>
+        <div class="flex items-center mb-4 gap-3">
+          <div
+            class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold"
+          >
+            i
+          </div>
+          <h3 id="info-modal-title" class="text-lg font-semibold">
+            Giới thiệu Chat Nhanh
+          </h3>
+        </div>
+        <p class="text-sm text-gray-600 leading-relaxed mb-4">
+          Chat Nhanh là ứng dụng trò chuyện thời gian thực nhẹ, tập trung vào
+          trải nghiệm đơn giản, tốc độ cao và thân thiện trên cả máy tính lẫn
+          thiết bị di động.
+        </p>
+        <ul class="space-y-2 text-sm text-gray-700 mb-5 list-disc pl-5">
+          <li>Gửi & nhận tin nhắn tức thì theo phòng</li>
+          <li>Đếm người online thời gian thực</li>
+          <li>Giao diện tối ưu đọc dài – tự ngắt dòng, mượt</li>
+          <li>Tên & avatar tuỳ chỉnh cá nhân</li>
+          <li>Thiết kế responsive dùng TailwindCSS</li>
+        </ul>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div class="p-3 rounded-lg bg-blue-50 border border-blue-100">
+            <p class="text-xs font-semibold text-blue-700 mb-1">Mẹo</p>
+            <p class="text-xs text-blue-700">
+              Dùng nhiều tab trình duyệt để test realtime.
+            </p>
+          </div>
+          <div class="p-3 rounded-lg bg-emerald-50 border border-emerald-100">
+            <p class="text-xs font-semibold text-emerald-700 mb-1">Sắp tới</p>
+            <p class="text-xs text-emerald-700">
+              Ghim tin, tìm kiếm, chia sẻ file nhẹ.
+            </p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3">
+          <button
+            id="info-close-btn2"
+            class="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm"
           >
             Đóng
+          </button>
+          <button
+            id="info-action-btn"
+            class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm"
+          >
+            Bắt đầu chat
           </button>
         </div>
       </div>
     </div>
+
+    <style>
+      @keyframes fadeInScale {
+        from {
+          opacity: 0;
+          transform: translateY(8px) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      .animate-fade-in {
+        animation: fadeInScale 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+      }
+      /* Emoji picker basic styling */
+      .emoji-picker {
+        position: absolute;
+        bottom: 58px; /* just above input area */
+        right: 12px;
+        width: 260px;
+        max-height: 240px;
+        overflow-y: auto;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.15),
+          0 2px 6px rgba(0, 0, 0, 0.08);
+        border-radius: 14px;
+        padding: 8px 6px 10px;
+        display: none;
+        z-index: 60;
+      }
+      .emoji-picker.open {
+        display: grid;
+      }
+      .emoji-picker button {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        border-radius: 8px;
+        transition: background 0.15s;
+      }
+      .emoji-picker button:hover {
+        background: #f1f5f9;
+      }
+      .emoji-picker button:active {
+        background: #e2e8f0;
+      }
+      .emoji-section-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: #64748b;
+        grid-column: 1 / -1;
+        margin: 4px 4px 2px;
+      }
+      /* Context menu for rooms */
+      #room-context-menu {
+        position: fixed;
+        top: 0;
+        left: 0;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 10px 32px -8px rgba(0, 0, 0, 0.28),
+          0 2px 8px rgba(0, 0, 0, 0.12);
+        border-radius: 10px;
+        padding: 6px 0;
+        width: 180px;
+        font-size: 14px;
+        z-index: 70;
+        display: none;
+        overflow: hidden;
+      }
+      #room-context-menu.open {
+        display: block;
+        animation: fadeInScale 0.16s ease-out;
+      }
+      #room-context-menu button {
+        width: 100%;
+        text-align: left;
+        padding: 8px 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #1e293b;
+        transition: background 0.12s, color 0.12s;
+      }
+      #room-context-menu button:hover {
+        background: #f1f5f9;
+      }
+      #room-context-menu button:active {
+        background: #e2e8f0;
+      }
+      #room-context-menu button[disabled] {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+    </style>
+
+    <!-- Socket.IO client -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="/index.js"></script>
+    <!-- Room context menu -->
+    <div id="room-context-menu" role="menu" aria-hidden="true"></div>
+    <!-- Mobile sidebar overlay -->
+    <div
+      id="sidebar-overlay"
+      class="fixed inset-0 bg-transparent hidden z-30 md:hidden pointer-events-none"
+    ></div>
+    <script src="./index.js"></script>
   </body>
 </html>
