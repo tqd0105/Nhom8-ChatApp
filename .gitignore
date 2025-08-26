@@ -127,6 +127,9 @@ public/uploads/
 *.sqlite
 *.sqlite3
 
+# User data files
+backend/users.json
+
 # SSL certificates (if any)
 *.pem
 *.key

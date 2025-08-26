@@ -1,3 +1,4 @@
+    
 <!DOCTYPE html>
 <html lang="vi">
   <head>
@@ -95,7 +96,6 @@
       .msg-time {
         font-size: 11px;
         opacity: 0.7;
-        margin-left: 6px;
         white-space: nowrap;
       }
 
@@ -307,11 +307,9 @@
               class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full user-count-badge"
             >
               <i class="fas fa-users mr-1"></i>
-              <span id="online-count">152</span> online
+              <span id="online-count"></span> online
             </span>
-            <button id="settings-btn" class="text-gray-500 hover:text-gray-700">
-              <i class="fas fa-cog text-lg"></i>
-            </button>
+
             <!-- Nút đóng sidebar chỉ hiện trên mobile -->
             <button
               id="mobile-close-sidebar"
@@ -342,21 +340,29 @@
         <!-- Thông tin người dùng hiện tại -->
         <div class="p-4 border-t border-gray-200 bg-gray-50">
           <div class="flex items-center justify-between">
-            <div class="flex items-center">
+            <div class="flex items-center w-full  ">
               <img
                 id="sidebar-avatar"
                 src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/023f3a09-10e0-4be5-b674-dd9f20cff6ac.png"
                 alt="Ảnh đại diện của bạn"
                 class="rounded-full w-10 h-10 object-cover"
               />
-              <div class="ml-3">
-                <h3 class="font-medium text-gray-900" id="sidebar-username">
-                  Tôi
-                </h3>
-                <div class="flex items-center">
-                  <span class="online-status online"></span>
-                  <span class="text-xs text-gray-500 ml-1">Online</span>
+              <div class="ml-3 flex justify-between items-center w-full ">
+                <div>
+                  <h3 class="font-medium text-gray-900" id="sidebar-username">
+                    Tôi
+                  </h3>
+                  <div class="flex items-center">
+                    <span class="online-status online"></span>
+                    <span class="text-xs text-gray-500 ml-1">Online</span>
+                  </div>
                 </div>
+                <button
+                  id="settings-btn"
+                  class="text-gray-500 hover:text-gray-700"
+                >
+                  <i class="fas fa-cog text-lg"></i>
+                </button>
               </div>
             </div>
           </div>
@@ -383,7 +389,7 @@
             </button>
             <div class="relative">
               <img
-                src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/f17e4c6a-1e94-422b-8a49-b7cf0dd38dfd.png"
+                src="./img/teamwork.png"
                 alt="Ảnh đại diện phòng chat"
                 class="rounded-full w-10 h-10 object-cover"
               />
@@ -394,7 +400,7 @@
             <div class="ml-3">
               <h2 class="font-semibold" id="current-chat-name">
                 Phòng chat chung
-              </h2>
+              </h2> 
               <div class="flex items-center">
                 <span class="online-status online"></span>
                 <span class="text-xs text-gray-500 ml-1">
@@ -404,11 +410,38 @@
             </div>
           </div>
 
-          <button class="text-gray-500 hover:text-gray-700" id="room-info-btn">
-            <i class="fas fa-info-circle"></i>
-          </button>
+          <div class="flex items-center gap-2">
+            <button 
+              class="text-gray-500 hover:text-red-600 transition-colors" 
+              id="clear-room-messages-btn"
+              title="Xóa tất cả tin nhắn trong phòng này"
+            >
+              <i class="fas fa-trash-alt"></i>
+            </button>
+            <button 
+              class="text-gray-500 hover:text-blue-600 transition-colors" 
+              id="room-members-btn"
+              title="Xem thành viên trong phòng"
+            >
+              <i class="fas fa-users"></i>
+            </button>
+            <button class="text-gray-500 hover:text-gray-700" id="room-info-btn">
+              <i class="fas fa-info-circle"></i>
+            </button>
+          </div>
         </div>
 
+        <!-- Thanh tìm kiếm tin nhắn -->
+        <div class="p-2 border-b border-gray-200 bg-gray-50 flex items-center gap-2">
+          <input
+            id="search-message-input"
+            type="text"
+            placeholder="Tìm kiếm tin nhắn trong phòng..."
+            class="w-full px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+            autocomplete="off"
+          />
+          <button id="clear-search-btn" class="text-gray-400 hover:text-gray-600 px-2 py-1" title="Xoá tìm kiếm" style="display:none"><i class="fas fa-times"></i></button>
+        </div>
         <!-- Khung tin nhắn -->
         <div
           class="flex-1 overflow-y-auto p-4 bg-gray-50"
@@ -422,16 +455,26 @@
               <input
                 type="text"
                 placeholder="Nhập tin nhắn..."
-                class="w-full px-4 py-2 pr-10 rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-4 py-2 pr-20 rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <button
-                type="button"
-                id="emoji-btn"
-                aria-label="Chọn emoji"
-                class="absolute right-2 top-2 text-gray-500 hover:text-blue-500"
-              >
-                <i class="far fa-smile"></i>
-              </button>
+              <div class="absolute right-2 top-2 flex items-center gap-1">
+                <button
+                  type="button"
+                  id="file-btn"
+                  aria-label="Gửi file"
+                  class="text-gray-500 hover:text-blue-500 p-1"
+                >
+                  <i class="fas fa-paperclip"></i>
+                </button>
+                <button
+                  type="button"
+                  id="emoji-btn"
+                  aria-label="Chọn emoji"
+                  class="text-gray-500 hover:text-blue-500 p-1"
+                >
+                  <i class="far fa-smile"></i>
+                </button>
+              </div>
             </div>
             <button
               type="submit"
@@ -440,6 +483,25 @@
               <i class="fas fa-paper-plane"></i>
             </button>
           </form>
+          
+          <!-- Hidden file input -->
+          <input type="file" id="file-input" style="display: none" accept="image/*,application/pdf,.doc,.docx,.txt,.zip,.rar">
+          
+          <!-- File preview area -->
+          <div id="file-preview" class="mt-2 hidden">
+            <div class="bg-gray-100 rounded-lg p-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i id="file-icon" class="text-blue-500"></i>
+                <div>
+                  <div id="file-name" class="text-sm font-medium"></div>
+                  <div id="file-size" class="text-xs text-gray-500"></div>
+                </div>
+              </div>
+              <button type="button" id="remove-file" class="text-red-500 hover:text-red-700">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -496,7 +558,7 @@
       id="settings-modal"
       class="fixed inset-0 hidden flex items-center justify-center z-50 bg-black/40 backdrop-blur-sm transition-opacity"
     >
-      <div class="bg-white rounded-lg p-6 max-w-md w-full">
+      <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold">Cài đặt người dùng</h3>
           <button
@@ -507,12 +569,12 @@
           </button>
         </div>
 
-        <div class="flex items-center mb-6">
+        <div class="flex items-center justify-center w-full mb-6">
           <div class="relative">
             <img
               src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/d3436adc-f537-4894-9817-5e85ab3dad00.png"
               alt="Ảnh đại diện người dùng"
-              class="rounded-full w-16 h-16 object-cover"
+              class="rounded-full w-20 h-auto object-cover"
               id="avatar-img"
             />
             <button
@@ -523,12 +585,12 @@
             </button>
           </div>
 
-          <div class="ml-4 flex flex-col gap-2">
+          <div class="ml-4 flex flex-col gap-2 w-full">
             <h4 class="font-medium">Tên hiển thị</h4>
             <input
               type="text"
               value="Người dùng"
-              class="mt-1 px-2 py-1 border border-gray-300 rounded"
+              class="mt-1 px-2 py-1 border border-gray-300 rounded-lg w-full"
               id="display-name-input"
             />
             <button
@@ -545,7 +607,44 @@
         </div>
 
         <div class="mt-6 pt-4 border-t">
-          <!-- Đã xóa nút Đăng xuất -->
+          
+          <button
+            id="logout-btn"
+            class="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors"
+          >
+            <i class="fas fa-sign-out-alt mr-2"></i>
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal đăng nhập -->
+    <div id="login-modal" class="fixed inset-0 flex items-center justify-center z-50 bg-black/40 backdrop-blur-sm" style="display:none">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-xs relative">
+        <h3 class="text-lg font-semibold mb-4">Đăng nhập</h3>
+        <form id="login-form" class="space-y-3">
+          <input type="text" id="login-username" class="w-full px-3 py-2 border rounded" placeholder="Tên đăng nhập" required />
+          <input type="password" id="login-password" class="w-full px-3 py-2 border rounded" placeholder="Mật khẩu" required />
+          <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Đăng nhập</button>
+        </form>
+        <div class="text-sm text-center mt-3">
+          Chưa có tài khoản? <button id="show-register-btn" class="text-blue-600 hover:underline">Đăng ký</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal đăng ký -->
+    <div id="register-modal" class="fixed inset-0 flex items-center justify-center z-50 bg-black/40 backdrop-blur-sm" style="display:none">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-xs relative">
+        <h3 class="text-lg font-semibold mb-4">Đăng ký</h3>
+        <form id="register-form" class="space-y-3">
+          <input type="text" id="register-username" class="w-full px-3 py-2 border rounded" placeholder="Tên đăng nhập" required />
+          <input type="password" id="register-password" class="w-full px-3 py-2 border rounded" placeholder="Mật khẩu" required />
+          <button type="submit" class="w-full bg-emerald-600 text-white py-2 rounded hover:bg-emerald-700">Đăng ký</button>
+        </form>
+        <div class="text-sm text-center mt-3">
+          Đã có tài khoản? <button id="show-login-btn" class="text-blue-600 hover:underline">Đăng nhập</button>
         </div>
       </div>
     </div>
@@ -722,7 +821,95 @@
         opacity: 0.45;
         cursor: not-allowed;
       }
+      
+      /* File message styling */
+      .file-message {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px;
+        margin: 4px 0;
+        max-width: 300px;
+      }
+      
+      .file-message .file-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .file-message .file-icon {
+        font-size: 72px;
+        width: 32px;
+        text-align: center;
+      }
+      
+      .file-message .file-details .file-name {
+        font-weight: 500;
+        color: #1f2937;
+        word-break: break-word;
+      }
+      
+      .file-message .file-details .file-size {
+        font-size: 12px;
+        color: #6b7280;
+      }
+      
+      .file-message.downloadable {
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      
+      .file-message.downloadable:hover {
+        background: #f1f5f9;
+      }
+      
+      .image-preview {
+        max-width: 250px;
+        max-height: 200px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      
+      .image-preview:hover {
+        transform: scale(1.02);
+      }
     </style>
+
+    <!-- Modal thành viên phòng -->
+    <div
+      id="room-members-modal"
+      class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center z-50"
+      aria-labelledby="room-members-modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md relative animate-fade-in"
+      >
+        <button
+          id="close-members-btn"
+          class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition"
+          aria-label="Đóng"
+        >
+          <i class="fas fa-times"></i>
+        </button>
+        <div class="flex items-center mb-4 gap-3">
+          <div
+            class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white"
+          >
+            <i class="fas fa-users"></i>
+          </div>
+          <h3 id="room-members-modal-title" class="text-lg font-semibold">
+            Thành viên phòng
+          </h3>
+        </div>
+        <div id="room-members-list" class="space-y-2 max-h-60 overflow-y-auto">
+          <!-- Danh sách thành viên sẽ được render ở đây -->
+        </div>
+      </div>
+    </div>
 
     <!-- Socket.IO client -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>

@@ -8,6 +8,14 @@ const globalMessages = [];
 const roomMessages = new Map();
 let nextId = 1;
 
+// Hàm để clear toàn bộ dữ liệu chat
+function clearAllMessages() {
+  globalMessages.length = 0;
+  roomMessages.clear();
+  nextId = 1;
+  console.log("✨ All chat messages cleared!");
+}
+
 function sanitizeUsername(u) {
   return String(u || 'Anonymous').trim().slice(0, MAX_NAME);
 }
@@ -21,11 +29,38 @@ function sanitizeAvatar(a) {
   return s.slice(0, 500);
 }
 
-function makeMessage({ userId=null, username, message, roomId=null, avatar=null }) {
+function makeMessage({ userId=null, username, message, roomId=null, avatar=null, file=null, tempId=null }) {
   const uname = sanitizeUsername(username);
   const text  = sanitizeMessage(message);
   const av    = sanitizeAvatar(avatar);
-  return { id: nextId++, userId, username: uname, avatar: avatar || null, message: text, roomId, ts: Date.now() };
+  
+  const msgObj = { 
+    id: nextId++, 
+    userId, 
+    username: uname, 
+    avatar: avatar || null, 
+    message: text, 
+    roomId, 
+    ts: Date.now() 
+  };
+
+  // Thêm tempId nếu có
+  if (tempId) {
+    msgObj.tempId = tempId;
+  }
+
+  // Thêm thông tin file nếu có
+  if (file) {
+    msgObj.file = {
+      filename: file.filename,
+      originalName: file.originalName,
+      size: file.size,
+      type: file.type,
+      url: file.url
+    };
+  }
+
+  return msgObj;
 }
 
 function pushWithLimit(arr, item, max) { arr.push(item); if (arr.length > max) arr.splice(0, arr.length - max); }
@@ -46,4 +81,30 @@ function getRoom(roomId, limit=50) {
   return arr.slice(-limit);
 }
 
-module.exports = { makeMessage, addGlobal, getGlobal, addRoom, getRoom };
+// Clear all global messages only
+function clearAllGlobalMessages() {
+  globalMessages.length = 0;
+  console.log("✨ All global messages cleared!");
+}
+
+// Clear all messages in a specific room
+function clearAllRoomMessages(roomId) {
+  const key = String(roomId || '').trim();
+  if (!key) return;
+  
+  if (roomMessages.has(key)) {
+    roomMessages.set(key, []);
+    console.log(`✨ All messages in room "${key}" cleared!`);
+  }
+}
+
+module.exports = { 
+  makeMessage, 
+  addGlobal, 
+  getGlobal, 
+  addRoom, 
+  getRoom, 
+  clearAllMessages,
+  clearAllGlobalMessages,
+  clearAllRoomMessages
+};

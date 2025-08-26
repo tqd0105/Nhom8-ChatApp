@@ -12,7 +12,15 @@ const {
   getGlobal,
   addRoom,
   getRoom,
+  clearAllMessages,
+  clearAllGlobalMessages,
+  clearAllRoomMessages,
 } = require("./store");
+
+// Import auth routes
+const authRoutes = require('./routes/auth');
+const fileRoutes = require('./routes/files');
+const auth = require('./middleware/auth');
 
 require("dotenv").config();
 
@@ -153,7 +161,10 @@ function registerSocketEvents(socket) {
 
   safeOn(socket, "send_message", async (data = {}) => {
     const text = String(data.message || "").trim();
-    if (!text) return;
+    const file = data.file || null;
+    
+    // Cần có ít nhất text hoặc file
+    if (!text && !file) return;
 
     const profile = {
       userId: socket.data.profile.userId,
@@ -161,7 +172,12 @@ function registerSocketEvents(socket) {
       avatar: socket.data.profile.avatar || ""
     };
 
-    const msg = makeMessage({ ...profile, message: text });
+    const msg = makeMessage({ 
+      ...profile, 
+      message: text,
+      file: file,
+      tempId: data.tempId 
+    });
     addGlobal(msg);
     io.emit("receive_message", msg);
     console.log("send_message ->", msg);
@@ -180,32 +196,40 @@ function registerSocketEvents(socket) {
     if (username) socket.data.profile.username = String(username).trim().slice(0, 40);
     if (avatar)   socket.data.profile.avatar   = String(avatar).trim();
 
+    // Kiểm tra xem socket đã ở trong phòng chưa
+    const currentMembers = roomMembers.get(roomId) || new Set();
+    const alreadyInRoom = currentMembers.has(socket.id);
+
     socket.join(roomId);
     addMember(roomId, socket.id);
 
     // gửi lịch sử phòng cho chính người mới
     socket.emit("history_room", { roomId, messages: getRoom(roomId, 50) });
 
-    // system message + broadcast
-    const sysMsg = makeMessage({
-      userId: "system",
-      username: "[system]",
-      message: `${socket.data.profile.username} joined`,
-      roomId
-    });
-    addRoom(roomId, sysMsg);
-    io.to(roomId).emit("receive_message", sysMsg);
+    // Chỉ gửi system message nếu user chưa ở trong phòng
+    if (!alreadyInRoom) {
+      const sysMsg = makeMessage({
+        userId: "system",
+        username: "[system]",
+        message: `${socket.data.profile.username} joined`,
+        roomId
+      });
+      addRoom(roomId, sysMsg);
+      io.to(roomId).emit("receive_message", sysMsg);
+    }
 
     // cập nhật danh sách thành viên
     io.to(roomId).emit("room_users", { roomId, members: getMembers(roomId) });
   });
 
   // GỬI TIN TRONG PHÒNG (bạn đã có — giữ nguyên, thêm username từ socket.data)
-  safeOn(socket, "send_room_message", ({ roomId, username, avatar, message } = {}) => {
+  safeOn(socket, "send_room_message", ({ roomId, username, avatar, message, file, tempId } = {}) => {
     roomId = String(roomId || "").trim();
     const name = String(username || socket.data.profile.username || "Anonymous").trim().slice(0, 40);
     const text = String(message || "").trim();
-    if (!roomId || !text) return;
+    
+    // Cần có ít nhất roomId và (text hoặc file)
+    if (!roomId || (!text && !file)) return;
 
     if (username) socket.data.profile.username = String(username).trim().slice(0, 40);
     if (avatar)   socket.data.profile.avatar   = String(avatar).trim();
@@ -215,6 +239,8 @@ function registerSocketEvents(socket) {
       username: socket.data.profile.username,
       avatar: socket.data.profile.avatar,
       message: text,
+      file: file,
+      tempId: tempId,
       roomId
     });
     addRoom(roomId, msg);
@@ -239,6 +265,49 @@ function registerSocketEvents(socket) {
     io.to(roomId).emit("receive_message", sysMsg);
 
     io.to(roomId).emit("room_users", { roomId, members: getMembers(roomId) });
+  });
+
+  // CLEAR ALL GLOBAL MESSAGES
+  safeOn(socket, "clear_global_messages", () => {
+    console.log(`${socket.data.profile.username} clearing all global messages`);
+    clearAllGlobalMessages();
+    io.emit("all_messages_cleared", { roomId: "global" });
+  });
+
+  // CLEAR ALL ROOM MESSAGES  
+  safeOn(socket, "clear_room_messages", ({ roomId } = {}) => {
+    roomId = String(roomId || "").trim();
+    if (!roomId) return;
+    
+    console.log(`${socket.data.profile.username} clearing all messages in ${roomId}`);
+    clearAllRoomMessages(roomId);
+    io.to(roomId).emit("all_messages_cleared", { roomId });
+  });
+
+  // Lấy danh sách thành viên phòng
+  safeOn(socket, "get_room_members", ({ roomId } = {}) => {
+    roomId = String(roomId || "").trim();
+    if (!roomId) return;
+    
+    const members = [];
+    const roomSocketIds = roomMembers.get(roomId);
+    
+    if (roomSocketIds) {
+      for (const socketId of roomSocketIds) {
+        const memberSocket = io.sockets.sockets.get(socketId);
+        if (memberSocket && memberSocket.data.profile) {
+          members.push({
+            username: memberSocket.data.profile.username || "Anonymous",
+            userId: memberSocket.data.profile.userId,
+            online: true,
+            avatar: memberSocket.data.profile.avatar || ""
+          });
+        }
+      }
+    }
+    
+    console.log(`${socket.data.profile.username} requested members for ${roomId}:`, members.length);
+    socket.emit("room_members_list", { roomId, members });
   });
 
   // KHI NGẮT KẾT NỐI → rời tất cả phòng
@@ -283,6 +352,33 @@ app.get("/api/rooms/:roomId/messages", (req, res) => {
 
 // ==== REST API ====
 
+// Auth routes
+app.use('/api/auth', authRoutes);
+
+// File routes
+app.use('/api/files', fileRoutes);
+
+// Admin endpoint to clear all chat data
+app.post('/api/admin/clear-messages', (req, res) => {
+  try {
+    clearAllMessages();
+    res.json({ 
+      success: true, 
+      message: 'All chat messages cleared successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error clearing messages:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to clear messages' 
+    });
+  }
+});
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // 0) Health check
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', ts: Date.now() });
@@ -298,9 +394,16 @@ app.post('/api/messages', asyncHandler((req, res) => {
   const username = String(req.body.username || 'Anonymous').trim().slice(0, 40);
   const avatar   = String(req.body.avatar || '').trim();
   const message  = String(req.body.message || '').trim();
-  if (!message) throw createError(400, 'message is required');
+  const fileInfo = req.body.file || null;
+  
+  if (!message && !fileInfo) throw createError(400, 'message or file is required');
 
-  const msg = makeMessage({ userId: 'api', username, avatar, message });
+  const msg = makeMessage({ 
+    userId: 'api', 
+    username, 
+    avatar, 
+    file: fileInfo 
+  });
   addGlobal(msg);
   io.emit('receive_message', msg);
   res.status(201).json(msg);
